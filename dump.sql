@@ -3365,6 +3365,24 @@ COPY public.article_fact (dateid, timeid, title, url, comp_sentiment) FROM stdin
 59	1081	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
 59	1201	Bodies frozen to wake up in future From baseball players to Bitcoin developers	null	0.7906
 60	1	As Crypto Markets Plunge 400 Billion Coinbase Reveals Major Bitcoin And Ethereum Price Risks	null	-0.9989
+59	121	Dropping Nearly 20 Bitcoin Suffers Worst Weekly Drop in a Year	null	-0.9987
+59	781	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	841	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	1081	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+59	121	Dropping Nearly 20 Bitcoin Suffers Worst Weekly Drop in a Year	null	-0.9987
+59	781	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	841	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	1081	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
 \.
 
 
@@ -5900,7 +5918,7 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 --
 
 COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
-1	pbkdf2_sha256$216000$Y4epOnJrQeKo$Q1m7j3ZvfIa6M7liIi9XQT727J82unAmzHQuNJ/LBQw=	2021-02-16 12:34:25.919796+00	t	rmacw				t	t	2021-02-16 12:27:34.534149+00
+1	pbkdf2_sha256$216000$Y4epOnJrQeKo$Q1m7j3ZvfIa6M7liIi9XQT727J82unAmzHQuNJ/LBQw=	2021-03-01 12:48:25.808162+00	t	rmacw				t	t	2021-02-16 12:27:34.534149+00
 \.
 
 
@@ -7042,6 +7060,7 @@ COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
 f55pu1s7qnvdw7yv9ae3s0av34l09f3e	e30:1lBzWh:WOPS8MwflgH7rudrDxGKtHvYkZBH8ZLLm_Elsx14zz4	2021-03-02 12:32:23.515538+00
 c3xax73j5sg6ctuhehfkom23n13kemws	e30:1lBzWv:xIGg8x5ujbgrMCe3z5OpLvtdqBL0XprlW_R6HjtMqfo	2021-03-02 12:32:37.228932+00
 n0oq9919nz75atqsrj32cmq6orl5q4x7	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lBzYf:UeO_r4zyyHW_lH2wzgthpVTOpwc-M0H3mcNTnKY4GO0	2021-03-02 12:34:25.923792+00
+o92rdb221aoydiroj3p8sujg6eb8dp7l	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lGhyL:cYt6qMk35DfqlfesFfFf2_yK1SmzvH26ND5JPMKPZTk	2021-03-15 12:48:25.816163+00
 \.
 
 
@@ -7810,7 +7829,7 @@ COPY public.polls_choice (id, choice_text, votes, question_id) FROM stdin;
 --
 
 COPY public.polls_profile (id, created, modified, user_id) FROM stdin;
-1	2021-02-16 12:33:21.273029+00	2021-02-16 12:34:25.922792+00	1
+1	2021-02-16 12:33:21.273029+00	2021-03-01 12:48:25.814177+00	1
 \.
 
 
@@ -17807,7 +17826,7 @@ SELECT pg_catalog.setval('public.polls_sentiment_id_seq', 1, false);
 -- Name: sentiment_fact_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.sentiment_fact_id_seq', 1, false);
+SELECT pg_catalog.setval('public.sentiment_fact_id_seq', 1, true);
 
 
 --
