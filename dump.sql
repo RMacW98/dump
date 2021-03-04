@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.15
--- Dumped by pg_dump version 10.15
+-- Dumped from database version 13.2 (Debian 13.2-1.pgdg100+1)
+-- Dumped by pg_dump version 13.2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -17,13 +17,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: DATABASE postgres; Type: COMMENT; Schema: -; Owner: postgres
---
-
-COMMENT ON DATABASE postgres IS 'default administrative connection database';
-
-
---
 -- Name: CryptoCaller; Type: SCHEMA; Schema: -; Owner: postgres
 --
 
@@ -33,21 +26,7 @@ CREATE SCHEMA "CryptoCaller";
 ALTER SCHEMA "CryptoCaller" OWNER TO postgres;
 
 --
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
---
--- Name: adminpack; Type: EXTENSION; Schema: -; Owner: 
+-- Name: adminpack; Type: EXTENSION; Schema: -; Owner: -
 --
 
 CREATE EXTENSION IF NOT EXISTS adminpack WITH SCHEMA pg_catalog;
@@ -62,7 +41,7 @@ COMMENT ON EXTENSION adminpack IS 'administrative functions for PostgreSQL';
 
 SET default_tablespace = '';
 
-SET default_with_oids = false;
+SET default_table_access_method = heap;
 
 --
 -- Name: article_fact; Type: TABLE; Schema: public; Owner: postgres
@@ -515,6 +494,24 @@ ALTER SEQUENCE public.ma_sentiment_dim_id_seq OWNED BY public.ma_sentiment_dim.i
 
 
 --
+-- Name: ma_view; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.ma_view AS
+ SELECT ma_sentiment_dim.dateid,
+    ma_sentiment_dim.timeid,
+    ma_sentiment_dim.trading_symbol,
+    (avg(ma_sentiment_dim.comp_sentiment))::numeric(5,4) AS comp_sentiment,
+    (avg(ma_sentiment_dim.sma))::numeric(5,4) AS sma,
+    (avg(ma_sentiment_dim.ema))::numeric(5,4) AS ema
+   FROM public.ma_sentiment_dim
+  GROUP BY ma_sentiment_dim.dateid, ma_sentiment_dim.timeid, ma_sentiment_dim.trading_symbol
+  ORDER BY ROW(ma_sentiment_dim.dateid, ma_sentiment_dim.timeid);
+
+
+ALTER TABLE public.ma_view OWNER TO postgres;
+
+--
 -- Name: match_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
@@ -702,6 +699,35 @@ CREATE VIEW public.sent_fact AS
 ALTER TABLE public.sent_fact OWNER TO postgres;
 
 --
+-- Name: time_dim; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.time_dim (
+    timeid integer NOT NULL,
+    "time" character varying,
+    hour integer,
+    minute integer
+);
+
+
+ALTER TABLE public.time_dim OWNER TO postgres;
+
+--
+-- Name: sent_view; Type: VIEW; Schema: public; Owner: postgres
+--
+
+CREATE VIEW public.sent_view AS
+ SELECT ma_sentiment_dim.id AS sentid,
+    (((to_date((date_dim.full_date)::text, 'DD/MM/YYY'::text) || ' '::text) || (time_dim."time")::text))::timestamp without time zone AS "timestamp",
+    ma_sentiment_dim.sma AS comp_sentiment
+   FROM ((public.ma_sentiment_dim
+     JOIN public.date_dim ON ((date_dim.dateid = ma_sentiment_dim.dateid)))
+     JOIN public.time_dim ON ((time_dim.timeid = ma_sentiment_dim.timeid)));
+
+
+ALTER TABLE public.sent_view OWNER TO postgres;
+
+--
 -- Name: sentiment_fact; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -751,20 +777,6 @@ CREATE TABLE public.temp_sent_fact (
 
 
 ALTER TABLE public.temp_sent_fact OWNER TO postgres;
-
---
--- Name: time_dim; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.time_dim (
-    timeid integer NOT NULL,
-    "time" character varying,
-    hour integer,
-    minute integer
-);
-
-
-ALTER TABLE public.time_dim OWNER TO postgres;
 
 --
 -- Name: articles_fact id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -1576,6 +1588,7 @@ COPY public.article_fact (dateid, timeid, title, url, comp_sentiment) FROM stdin
 29	578	GLOBAL MARKETS Dollar stocks slide as virus social trading cools sentiment	null	-0.9970
 29	578	GLOBAL MARKETS Wall Street set for weak open on hedge fund retail battle	null	-0.6705
 29	578	GLOBAL MARKETS Wall Street set for weak open on hedge fund retail battle	null	-0.6705
+60	1381	Are You Buying Bitcoin or Joining a Cult	null	0.9325
 29	578	GLOBAL MARKETS Wall Street set for weak open on hedge fund retail battle By Reuters	null	-0.6705
 29	1178	Opinion Who s getting rich off GameStop s stock The market makers and middlemen including	null	0.5574
 29	1118	U S Stocks Open Lower as GameStop Frenzy Builds	null	-0.5423
@@ -2054,6 +2067,7 @@ COPY public.article_fact (dateid, timeid, title, url, comp_sentiment) FROM stdin
 29	1144	Two bars for bitcoins owner in New York s Hell s Kitchen selling out for cryptocurrency	null	-0.9618
 29	1084	Robinhood Halts Instant Buying Power For Crypto	null	0.9325
 29	1144	Two bars for bitcoins owner in New York s Hell s Kitchen selling out for cryptocurrency	null	-0.9618
+62	1081	Oil up ahead of OPEC gold under pressure MarketPulse	null	0.7003
 29	1144	Two bars for bitcoins owner in New York s Hell s Kitchen selling out for cryptocurrency	null	-0.9618
 30	304	XRP Jumps 20 32 In Rally By Investing com	null	0.9982
 30	304	XRP Climbs 10 65 In Rally By Investing com	null	0.9682
@@ -2402,6 +2416,7 @@ COPY public.article_fact (dateid, timeid, title, url, comp_sentiment) FROM stdin
 36	1258	German court can t cash 60M in bitcoin from man who won t give up passwords	null	0.8934
 36	1258	German court can t cash 60M in bitcoin from man who won t give up passwords	null	0.8934
 36	1378	MoneyLine Podcast The Chance to Profit From This 1 6T Industry Is Just Beginning	null	0.5994
+62	1261	Why Square Stock Is Giving Away Gains From Yesterday	null	0.9840
 37	1078	Serbian Man Extradited to US After Being Indicted In 70 Million Crypto Fraud CoinDesk	null	-0.5859
 37	58	Altcoin Market Cap On The Verge Of Life Changing Breakout	null	0.9325
 36	1258	German court can t cash 60M in bitcoin from man who won t give up passwords	null	0.8934
@@ -3383,6 +3398,310 @@ COPY public.article_fact (dateid, timeid, title, url, comp_sentiment) FROM stdin
 60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
 60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
 60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+59	121	Dropping Nearly 20 Bitcoin Suffers Worst Weekly Drop in a Year	null	-0.9987
+59	781	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	841	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	1081	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+59	121	Dropping Nearly 20 Bitcoin Suffers Worst Weekly Drop in a Year	null	-0.9987
+59	781	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	841	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+59	1081	Bitcoin extends retreat from record high to hit lowest in 20 days Reuters	null	0.9670
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+61	61	Stock futures lower after selloff in US Treasury bonds eased	null	-0.9984
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	China s Inner Mongolia to end cryptocurrency mining ban new steel coke projects Reuters	null	-0.5574
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	961	Here s your chance to win a 10k investment in crypto by donating to charity	null	0.8225
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	Investor Paul Singer warned of head smacking craziness in markets and said there could be trouble ahead	null	-0.9565
+60	601	China s furtive bitcoin trade heats up again worrying regulators Reuters	null	0.6808
+60	661	Big Short investor Michael Burry slams bitcoin as a speculative bubble and warns a crash is coming	null	-0.9993
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	61	Dollar holds advantage over low yielders A looks to RBA Reuters UK	null	-0.9638
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+61	61	Dollar holds advantage over low yielders A looks to RBA Reuters UK	null	-0.9638
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+61	61	Dollar holds advantage over low yielders A looks to RBA Reuters UK	null	-0.9638
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+61	61	Dollar holds advantage over low yielders A looks to RBA Reuters UK	null	-0.9638
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	121	Dow Jones Futures Cut Gains As Jobs Data Disappoints Bitcoin Surges Above 52 000	null	0.9758
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	541	Bitcoin Jumps Above 50 000 in Recovery from Last Week s Rout	null	0.9970
+62	661	Dow Rallies Tech Stocks Slide As Jobs Data Disappoints Bitcoin Surges Above 52 000	null	-0.9972
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	FOREX Dollar index in fourth straight session of gains Aussie picks up Reuters	null	0.9890
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1021	NewsWatch U S COVID vaccine supply to be boosted by Merck helping make J J vaccine	null	0.5719
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	601	Bitcoin Jumps Above 50 000 in Recovery from Last Week s Rout	null	0.9970
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+61	781	Cathie Wood breaks down why she was very comfortable as the stock market got rocked by last week s bond sell off and shares her outlook for what happens after the tech rout	null	0.6997
+61	841	US stocks mixed as investors hit pause on Monday s rally	null	0.9682
+61	1201	FOREX Dollar dips Aussie gains on improving risk sentiment Reuters	null	0.9829
+61	1261	Tech stocks lead losses as US indices pull back from rally	null	0.9601
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Why Square Stock Is Giving Away Gains From Yesterday	null	0.9840
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in U S yields Aussie gains Reuters	null	0.9814
+62	301	FOREX Dollar on defensive as risk sentiment recovers amid retreat in US yields Aussie gains Reuters	null	0.9814
+62	361	GLOBAL MARKETS Asian stocks perk up on economic cheer as Treasuries stabilise Reuters	null	0.9042
+62	481	BOJ shares hit limit up again on mix of memento traders liquidity Reuters	null	0.8481
+62	721	Stocks climb as Treasuries stabilise Reuters	null	0.8360
+62	1021	Here s Why Canaan Stock Was Soaring Today	null	0.9985
+62	1261	Star stockpicker Cathie Wood remains bullish on bitcoin warns on banks Reuters	null	0.9970
+62	1381	Blockchain Losers Are Spending Millions On What Are Basically Useless Loot Boxes	null	-0.7351
 \.
 
 
@@ -5918,7 +6237,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 --
 
 COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
-1	pbkdf2_sha256$216000$Y4epOnJrQeKo$Q1m7j3ZvfIa6M7liIi9XQT727J82unAmzHQuNJ/LBQw=	2021-03-01 12:48:25.808162+00	t	rmacw				t	t	2021-02-16 12:27:34.534149+00
+2	pbkdf2_sha256$216000$uhYud5PCkJZr$V5Jgn0EUd+NkEAF0IxjH3M6hiK2eeKHn/5QaHmJS+OU=	2021-03-01 22:10:09.122331+00	f	ianmacwilliam@gmail.com				f	t	2021-03-01 22:09:43.707866+00
+3	pbkdf2_sha256$216000$oKxyPfXooyoC$3sKIP1ZWwSIN3/BdE0EQkEwt/r22Wu70Sap5t7gpiAw=	2021-03-02 14:07:34.736108+00	f	Payyd				f	t	2021-03-02 14:07:18.124397+00
+4	pbkdf2_sha256$216000$DcwI6iawIw0h$guUKCqe2B7c/ncRfVXJEOYAhdwWFJDT6/VGFEgQeT7Q=	2021-03-02 14:08:50.804254+00	f	kingdeco				f	t	2021-03-02 14:07:40.726119+00
+1	pbkdf2_sha256$216000$Y4epOnJrQeKo$Q1m7j3ZvfIa6M7liIi9XQT727J82unAmzHQuNJ/LBQw=	2021-03-03 18:19:08.237171+00	t	rmacw				t	t	2021-02-16 12:27:34.534149+00
 \.
 
 
@@ -7061,6 +7383,14 @@ f55pu1s7qnvdw7yv9ae3s0av34l09f3e	e30:1lBzWh:WOPS8MwflgH7rudrDxGKtHvYkZBH8ZLLm_El
 c3xax73j5sg6ctuhehfkom23n13kemws	e30:1lBzWv:xIGg8x5ujbgrMCe3z5OpLvtdqBL0XprlW_R6HjtMqfo	2021-03-02 12:32:37.228932+00
 n0oq9919nz75atqsrj32cmq6orl5q4x7	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lBzYf:UeO_r4zyyHW_lH2wzgthpVTOpwc-M0H3mcNTnKY4GO0	2021-03-02 12:34:25.923792+00
 o92rdb221aoydiroj3p8sujg6eb8dp7l	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lGhyL:cYt6qMk35DfqlfesFfFf2_yK1SmzvH26ND5JPMKPZTk	2021-03-15 12:48:25.816163+00
+103svvo7z8dzwqd7su23oxmcakhfr9jl	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lGqAU:uLFGFdiewCNcwTGVjY8nADQ5aAdjY9QBU85uwUHI5Co	2021-03-15 21:33:30.905398+00
+4cqg6x0t1dxys1gxb05roivrkj9nyndj	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lGqDh:pVRzM4JKPJSR0Wq2ujRdX43A3qRjNe_voT8cbjNvqus	2021-03-15 21:36:49.367361+00
+1vlweppfjh71bvjl82d0lwgcgfp3rn6b	.eJxVjMEOwiAQRP-FsyGwLaV69O43kF3YlaqBpLQn47_bJj3oHOe9mbcKuC45rI3nMCV1UaBOvx1hfHLZQXpguVcda1nmifSu6IM2fauJX9fD_TvI2PK27pwxMQli5Gih846EjAUCFG-Ex14EIfXOC4xwdoNxdsC4RYCYEqvPFwZDOTQ:1lGqjx:-oYiHZhwoj6an70e-YG2DQj1xPfJm9CcOyoQpC6F56E	2021-03-15 22:10:09.134748+00
+swymy01rpj4gki8e0hvnl192nuyv8dac	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lH1h2:ZJw0-tM12wqlmc7PhgZsjflyBJDMHma6K_EIENo-yxU	2021-03-16 09:51:52.315771+00
+0v8bi96ct3aiaxuubs8owu0o33ogddgo	.eJxVjEEOwiAQRe_C2pACzggu3XsGMsNQqRpISrsy3l2bdKHb_977LxVpXUpce57jJOqsnDr8bkzpkesG5E711nRqdZkn1puid9r1tUl-Xnb376BQL9-aEZEHEArJSoZMmZMjQQ_oxFoKHMBAcGZMAnb05BhQ5OgHb-wJjXp_AAI8OAQ:1lH5gU:I-IYxUZWMAAV-x8HuGi38p6BqK_yDFCoLHGi1CFFCFk	2021-03-16 14:07:34.744831+00
+z5ttb71w68uvg2ux1gfc41cow8egywzy	.eJxVjMsOwiAQRf-FtSFDeYy4dN9vIMMAUjU0Ke3K-O_apAvd3nPOfYlA21rD1vMSpiQuwojT7xaJH7ntIN2p3WbJc1uXKcpdkQftcpxTfl4P9--gUq_f2qHNKQI6OPuiDTPq4nFgSwqUZyQHBMgDkFPJIiaFOlsPymoyBVm8P8sNNxE:1lH5hi:mwuCitZyCCvTt5F-jG__itByMP1pL3x2Pl0lH7FF1X8	2021-03-16 14:08:50.812082+00
+y9pw5aa0sid1asw51f4dz6yy88515lsn	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lHOHJ:V3afeOCqOtLMOv_dX36ygXdl7gg3_o8JCJ0MO8zGWJE	2021-03-17 09:58:49.747492+00
+p6hefogann22emb5fb92iv9szdi1p3yr	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESgHtm5n3Eh7bWv225NmPSVwEidPvFhAfue0g3dFuk4xTW-cxyF2RB13kMKX8vB7u30HFUr917zpyio1lUpSUIQsCI_dBR0PKKKtQuCDmLrGzBaSz47Nj3UUATrw_sI03Ng:1lHW5U:OU3WVBjwH3d-al6b24xccoj08iCbjxps3r6GluYf9tA	2021-03-17 18:19:08.252952+00
 \.
 
 
@@ -7069,748 +7399,911 @@ o92rdb221aoydiroj3p8sujg6eb8dp7l	.eJxVjDkOwjAUBe_iGln5P8YLJX3OYD1vOIAcKUuFuDtESg
 --
 
 COPY public.ma_sentiment_dim (id, dateid, timeid, trading_symbol, comp_sentiment, sma, ema) FROM stdin;
-721	25	601	BTC	0.9766	0.9766	0.9766
-722	25	661	BTC	\N	0.9766	0.9766
-723	25	721	BTC	0.9818	0.9792	0.9796
-724	25	781	BTC	0.7717	0.9100	0.8970
-725	25	841	BTC	-0.8126	0.4794	0.3597
-726	25	901	BTC	0.9682	0.5771	0.5217
-727	25	961	BTC	0.9818	0.6446	0.6298
-728	25	1021	BTC	0.6808	0.6498	0.6406
-729	25	1081	BTC	\N	0.6498	0.6406
-730	25	1141	BTC	0.8862	0.6793	0.6949
-731	25	1201	BTC	0.9705	0.7117	0.7510
-732	25	1261	BTC	-0.5859	0.5819	0.4970
-733	25	1321	BTC	0.9986	0.6198	0.5872
-734	25	1381	BTC	\N	0.6198	0.5872
-735	26	1	BTC	\N	0.6198	0.5872
-736	26	61	BTC	\N	0.6198	0.5872
-737	26	121	BTC	-0.9970	0.4851	0.2043
-738	26	181	BTC	\N	0.4851	0.2043
-739	26	241	BTC	\N	0.4851	0.2043
-740	26	301	BTC	\N	0.4851	0.2043
-741	26	361	BTC	0.9840	0.5234	0.4381
-742	26	421	BTC	-0.9944	0.4150	0.0698
-743	26	481	BTC	\N	0.4150	0.0698
-744	26	541	BTC	\N	0.4150	0.0698
-745	26	601	BTC	\N	0.4150	0.0698
-746	26	661	BTC	\N	0.4150	0.0698
-747	26	721	BTC	\N	0.4150	0.0698
-748	26	781	BTC	\N	0.4150	0.0698
-749	26	841	BTC	\N	0.4150	0.0698
-750	26	901	BTC	\N	0.4150	0.0698
-751	26	961	BTC	\N	0.4150	0.0698
-752	26	1021	BTC	\N	0.4150	0.0698
-753	26	1081	BTC	\N	0.4150	0.0698
-754	26	1141	BTC	-0.1484	0.3775	-0.0586
-755	26	1201	BTC	-0.9993	0.2914	-0.4392
-756	26	1261	BTC	-0.7269	0.2315	-0.5307
-757	26	1321	BTC	-0.0643	0.2151	-0.4055
-758	26	1381	BTC	0.9468	0.2536	-0.0855
-759	27	1	BTC	\N	0.2536	-0.0855
-760	27	61	BTC	\N	0.2536	-0.0855
-761	27	121	BTC	\N	0.2536	-0.0855
-762	27	181	BTC	\N	0.2536	-0.0855
-763	27	241	BTC	-0.0150	0.2402	-0.0625
-764	27	301	BTC	-0.5574	0.2022	-0.1978
-765	27	361	BTC	\N	0.2022	-0.1978
-766	27	421	BTC	\N	0.2022	-0.1978
-767	27	481	BTC	-0.5267	0.1691	-0.2951
-768	27	541	BTC	-0.5859	0.1362	-0.3691
-769	27	601	BTC	-0.6597	0.0651	-0.4350
-770	27	661	BTC	-0.9978	0.0208	-0.5518
-771	27	721	BTC	-0.0160	-0.0208	-0.4483
-772	27	781	BTC	-0.5574	-0.0762	-0.4682
-773	27	841	BTC	-0.3362	-0.0563	-0.4453
-774	27	901	BTC	0.0737	-0.0936	-0.3586
-775	27	961	BTC	-0.0175	-0.1352	-0.3035
-776	27	1021	BTC	-0.0144	-0.1642	-0.2580
-777	27	1081	BTC	0.9834	-0.1183	-0.0675
-778	27	1141	BTC	0.9771	-0.1146	0.0897
-779	27	1201	BTC	0.4062	-0.1372	0.1365
-780	27	1261	BTC	-0.7506	-0.1438	0.0072
-781	27	1321	BTC	\N	-0.1914	0.0072
-782	27	1381	BTC	0.4108	-0.1673	0.0728
-783	28	1	BTC	\N	-0.1673	0.0728
-784	28	61	BTC	\N	-0.1673	0.0728
-785	28	121	BTC	\N	-0.1327	0.0728
-786	28	181	BTC	\N	-0.1327	0.0728
-787	28	241	BTC	0.4397	-0.1098	0.1643
-788	28	301	BTC	0.8934	-0.0713	0.3273
-789	28	361	BTC	-0.5574	-0.1305	0.1459
-790	28	421	BTC	0.7906	-0.0619	0.2692
-791	28	481	BTC	0.5267	-0.0401	0.3158
-792	28	541	BTC	\N	-0.0401	0.3158
-793	28	601	BTC	0.0534	-0.0368	0.2649
-794	28	661	BTC	0.9726	-0.0019	0.3943
-795	28	721	BTC	0.6434	0.0196	0.4378
-796	28	781	BTC	0.2559	0.0272	0.4073
-797	28	841	BTC	0.4191	0.0394	0.4092
-798	28	901	BTC	0.3034	0.0474	0.3926
-799	28	961	BTC	0.3082	0.0551	0.3796
-800	28	1021	BTC	0.9842	0.0816	0.4707
-801	28	1081	BTC	-0.0439	0.0782	0.3945
-802	28	1141	BTC	0.0000	0.0823	0.3369
-803	28	1201	BTC	0.3074	0.1186	0.3327
-804	28	1261	BTC	0.4561	0.1514	0.3503
-805	28	1321	BTC	0.3177	0.1621	0.3457
-806	28	1381	BTC	0.4547	0.1484	0.3609
-807	29	1	BTC	0.3721	0.1544	0.3625
-808	29	61	BTC	0.0000	0.1504	0.3123
-809	29	121	BTC	-0.2064	0.1412	0.2409
-810	29	181	BTC	0.0000	0.1377	0.2079
-811	29	241	BTC	0.9970	0.1630	0.3157
-812	29	301	BTC	0.0015	0.1770	0.2729
-813	29	361	BTC	0.9325	0.1954	0.3624
-814	29	421	BTC	0.0015	0.1908	0.3136
-815	29	481	BTC	-0.0008	0.2033	0.2711
-816	29	541	BTC	0.0015	0.2173	0.2347
-817	29	601	BTC	-0.0008	0.2330	0.2030
-818	29	661	BTC	0.4266	0.2669	0.2331
-819	29	721	BTC	0.3280	0.2751	0.2458
-820	29	781	BTC	0.4266	0.2985	0.2701
-821	29	841	BTC	0.3280	0.3143	0.2778
-822	29	901	BTC	0.0015	0.3126	0.2408
-823	29	961	BTC	0.0015	0.3130	0.2088
-824	29	1021	BTC	-0.0009	0.3134	0.1807
-825	29	1081	BTC	-0.0008	0.2899	0.1564
-826	29	1141	BTC	0.0017	0.2667	0.1357
-827	29	1201	BTC	0.0015	0.2571	0.1178
-828	29	1261	BTC	0.0078	0.2751	0.1031
-829	29	1321	BTC	0.9985	0.2920	0.2227
-830	29	1381	BTC	0.2268	0.2877	0.2233
-831	30	1	BTC	-0.1998	0.2766	0.1668
-832	30	61	BTC	0.5719	0.2832	0.2209
-833	30	121	BTC	0.9682	0.2981	0.3206
-834	30	181	BTC	\N	0.2981	0.3206
-835	30	241	BTC	-0.0007	0.2885	0.2721
-836	30	301	BTC	-0.0007	0.2690	0.2317
-837	30	361	BTC	-0.5574	0.2690	0.1164
-838	30	421	BTC	-0.5574	0.2397	0.0192
-839	30	481	BTC	\N	0.2334	0.0192
-840	30	541	BTC	\N	0.2334	0.0192
-841	30	601	BTC	0.3433	0.2398	0.0780
-842	30	661	BTC	0.3115	0.2251	0.1184
-843	30	721	BTC	0.0675	0.2123	0.1099
-844	30	781	BTC	0.6249	0.2205	0.1929
-845	30	841	BTC	\N	0.2160	0.1929
-846	30	901	BTC	\N	0.2140	0.1929
-847	30	961	BTC	-0.0862	0.2048	0.1375
-848	30	1021	BTC	0.9882	0.2049	0.2960
-849	30	1081	BTC	-0.7906	0.1875	0.1038
-850	30	1141	BTC	-0.0212	0.1870	0.0826
-851	30	1201	BTC	\N	0.1842	0.0826
-852	30	1261	BTC	0.3499	0.1816	0.1318
-853	30	1321	BTC	\N	0.1783	0.1318
-854	30	1381	BTC	\N	0.1714	0.1318
-855	31	1	BTC	\N	0.1663	0.1318
-856	31	61	BTC	0.9970	0.1918	0.3447
-857	31	121	BTC	\N	0.2023	0.3447
-858	31	181	BTC	0.7906	0.2231	0.4547
-859	31	241	BTC	\N	0.2022	0.4547
-860	31	301	BTC	0.9970	0.2291	0.5888
-861	31	361	BTC	\N	0.2096	0.5888
-862	31	421	BTC	\N	0.2155	0.5888
-863	31	481	BTC	\N	0.2219	0.5888
-864	31	541	BTC	0.5574	0.2382	0.5793
-865	31	601	BTC	-0.9993	0.2089	0.1686
-866	31	661	BTC	-0.4512	0.1830	0.0255
-867	31	721	BTC	0.0064	0.1736	0.0215
-868	31	781	BTC	-0.2726	0.1530	-0.0360
-869	31	841	BTC	0.6124	0.1614	0.0833
-870	31	901	BTC	0.3246	0.1709	0.1255
-871	31	961	BTC	0.7906	0.1941	0.2373
-872	31	1021	BTC	-0.2407	0.1870	0.1597
-873	31	1081	BTC	-0.9993	0.1577	-0.0232
-874	31	1141	BTC	0.4331	0.1704	0.0471
-875	31	1201	BTC	-0.9325	0.1429	-0.1008
-876	31	1261	BTC	\N	0.1470	-0.1008
-877	31	1321	BTC	\N	0.1204	-0.1008
-878	31	1381	BTC	\N	0.1169	-0.1008
-879	32	1	BTC	\N	0.1275	-0.1008
-880	32	61	BTC	0.4108	0.1221	0.0199
-881	32	121	BTC	\N	0.0929	0.0199
-882	32	181	BTC	\N	0.0929	0.0199
-883	32	241	BTC	0.4723	0.1093	0.1402
-884	32	301	BTC	\N	0.1132	0.1402
-885	32	361	BTC	-0.5574	0.1132	-0.0422
-886	32	421	BTC	0.1131	0.1371	-0.0062
-887	32	481	BTC	0.0550	0.1343	0.0067
-888	32	541	BTC	0.6124	0.1502	0.1253
-889	32	601	BTC	-0.9968	0.1056	-0.0815
-890	32	661	BTC	0.3688	0.1075	-0.0025
-891	32	721	BTC	0.9712	0.1376	0.1613
-892	32	781	BTC	0.0113	0.1171	0.1369
-893	32	841	BTC	-0.9993	0.0811	-0.0426
-894	32	901	BTC	0.9818	0.1093	0.1154
-895	32	961	BTC	0.0982	0.1150	0.1128
-896	32	1021	BTC	0.9682	0.1144	0.2397
-897	32	1081	BTC	-0.0481	0.1376	0.1976
-898	32	1141	BTC	-0.6705	0.1173	0.0723
-899	32	1201	BTC	0.5994	0.1319	0.1476
-900	32	1261	BTC	0.5267	0.1373	0.2012
-901	32	1321	BTC	0.2268	0.1399	0.2048
-902	32	1381	BTC	\N	0.1399	0.2048
-903	33	1	BTC	0.2488	0.1430	0.2117
-904	33	61	BTC	-0.6808	0.0951	0.0745
-905	33	121	BTC	-0.5859	0.0762	-0.0249
-906	33	181	BTC	-0.6705	0.0356	-0.1205
-907	33	241	BTC	\N	0.0356	-0.1205
-908	33	301	BTC	-0.9997	-0.0199	-0.2653
-909	33	361	BTC	-0.6705	-0.0375	-0.3300
-910	33	421	BTC	0.9477	-0.0115	-0.1312
-911	33	481	BTC	\N	-0.0115	-0.1312
-912	33	541	BTC	-0.3371	-0.0351	-0.1665
-913	33	601	BTC	\N	-0.0090	-0.1665
-914	33	661	BTC	\N	0.0033	-0.1665
-915	33	721	BTC	\N	0.0032	-0.1665
-916	33	781	BTC	\N	0.0113	-0.1665
-917	33	841	BTC	\N	-0.0069	-0.1665
-918	33	901	BTC	\N	-0.0173	-0.1665
-919	33	961	BTC	\N	-0.0433	-0.1665
-920	33	1021	BTC	\N	-0.0368	-0.1665
-921	33	1081	BTC	\N	-0.0036	-0.1665
-922	33	1141	BTC	\N	-0.0192	-0.1665
-923	33	1201	BTC	\N	0.0147	-0.1665
-924	33	1261	BTC	\N	0.0147	-0.1665
-925	33	1321	BTC	\N	0.0147	-0.1665
-926	33	1381	BTC	\N	0.0147	-0.1665
-927	34	1	BTC	\N	0.0147	-0.1665
-928	34	61	BTC	\N	-0.0006	-0.1665
-929	34	121	BTC	\N	-0.0006	-0.1665
-930	34	181	BTC	\N	-0.0006	-0.1665
-931	34	241	BTC	\N	-0.0195	-0.1665
-932	34	301	BTC	\N	-0.0195	-0.1665
-933	34	361	BTC	\N	0.0029	-0.1665
-934	34	421	BTC	\N	-0.0019	-0.1665
-935	34	481	BTC	\N	-0.0044	-0.1665
-936	34	541	BTC	\N	-0.0338	-0.1665
-937	34	601	BTC	\N	0.0143	-0.1665
-938	34	661	BTC	\N	-0.0043	-0.1665
-939	34	721	BTC	\N	-0.0585	-0.1665
-940	34	781	BTC	\N	-0.0626	-0.1665
-941	34	841	BTC	\N	-0.0041	-0.1665
-942	34	901	BTC	\N	-0.0698	-0.1665
-943	34	961	BTC	\N	-0.0818	-0.1665
-944	34	1021	BTC	\N	-0.1626	-0.1665
-945	34	1081	BTC	\N	-0.1721	-0.1665
-946	34	1141	BTC	\N	-0.1268	-0.1665
-947	34	1201	BTC	\N	-0.1994	-0.1665
-948	34	1261	BTC	\N	-0.2801	-0.1665
-949	34	1321	BTC	\N	-0.3435	-0.1665
-950	34	1381	BTC	\N	-0.3435	-0.1665
-951	35	1	BTC	\N	-0.4281	-0.1665
-952	35	61	BTC	\N	-0.3860	-0.1665
-953	35	121	BTC	\N	-0.3460	-0.1665
-954	35	181	BTC	\N	-0.2649	-0.1665
-955	35	241	BTC	\N	-0.2649	-0.1665
-956	35	301	BTC	\N	-0.0200	-0.1665
-957	35	361	BTC	\N	0.3053	-0.1665
-958	35	421	BTC	\N	-0.3371	-0.1665
-959	35	481	BTC	\N	-0.3371	-0.1665
-960	35	541	BTC	\N	\N	-0.1665
-961	35	601	BTC	\N	\N	-0.1665
-962	35	661	BTC	\N	\N	-0.1665
-963	35	721	BTC	0.5046	0.5046	0.5020
-964	35	781	BTC	-0.0010	0.2518	0.2330
-965	35	841	BTC	0.9682	0.4906	0.5135
-966	35	901	BTC	0.4199	0.4729	0.4849
-967	35	961	BTC	0.9985	0.5780	0.6188
-968	35	1021	BTC	0.9985	0.6481	0.7066
-969	35	1081	BTC	0.2312	0.5886	0.6065
-970	35	1141	BTC	\N	0.5886	0.6065
-971	35	1201	BTC	0.9628	0.6353	0.6845
-972	35	1261	BTC	0.9970	0.6755	0.7476
-973	35	1321	BTC	0.0082	0.6088	0.6080
-974	35	1381	BTC	0.5994	0.6079	0.6064
-975	36	1	BTC	0.9325	0.6350	0.6622
-976	36	61	BTC	\N	0.6350	0.6622
-977	36	121	BTC	\N	0.6350	0.6622
-978	36	181	BTC	\N	0.6350	0.6622
-979	36	241	BTC	0.9001	0.6554	0.7176
-980	36	301	BTC	-0.7650	0.5539	0.4038
-981	36	361	BTC	\N	0.5539	0.4038
-982	36	421	BTC	\N	0.5539	0.4038
-983	36	481	BTC	0.0710	0.5217	0.3221
-984	36	541	BTC	-0.0339	0.4870	0.2436
-985	36	601	BTC	0.9682	0.5153	0.3906
-986	36	661	BTC	\N	0.5153	0.3906
-987	36	721	BTC	-0.0011	0.4866	0.3073
-988	36	781	BTC	0.7430	0.5001	0.3932
-989	36	841	BTC	0.9781	0.5240	0.5015
-990	36	901	BTC	\N	0.5240	0.5015
-991	36	961	BTC	\N	0.5240	0.5015
-992	36	1021	BTC	\N	0.5240	0.5015
-993	36	1081	BTC	\N	0.5240	0.5015
-994	36	1141	BTC	\N	0.5240	0.5015
-995	36	1201	BTC	0.8934	0.5416	0.6207
-996	36	1261	BTC	0.9682	0.5610	0.7110
-997	36	1321	BTC	0.7964	0.5712	0.7307
-998	36	1381	BTC	0.2047	0.5560	0.6201
-999	37	1	BTC	0.9325	0.5710	0.6811
-1000	37	61	BTC	\N	0.5710	0.6811
-1001	37	121	BTC	0.9970	0.5874	0.7463
-1002	37	181	BTC	-0.8308	0.5349	0.4431
-1003	37	241	BTC	0.9853	0.5510	0.5415
-1004	37	301	BTC	\N	0.5510	0.5415
-1005	37	361	BTC	0.6166	0.5532	0.5561
-1006	37	421	BTC	\N	0.5532	0.5561
-1007	37	481	BTC	\N	0.5532	0.5561
-1008	37	541	BTC	0.9549	0.5666	0.6479
-1009	37	601	BTC	0.9985	0.5805	0.7215
-1010	37	661	BTC	\N	0.5805	0.7215
-1011	37	721	BTC	0.3876	0.5768	0.6486
-1012	37	781	BTC	0.0086	0.5771	0.5198
-1013	37	841	BTC	0.0377	0.5471	0.4289
-1014	37	901	BTC	0.0448	0.5350	0.3603
-1015	37	961	BTC	0.9957	0.5349	0.4689
-1016	37	1021	BTC	0.4098	0.5159	0.4592
-1017	37	1081	BTC	0.3873	0.5209	0.4477
-1018	37	1141	BTC	0.9682	0.5349	0.5287
-1019	37	1201	BTC	0.6369	0.5247	0.5451
-1020	37	1261	BTC	0.9758	0.5241	0.6095
-1021	37	1321	BTC	0.9758	0.5543	0.6633
-1022	37	1381	BTC	0.7096	0.5577	0.6700
-1023	38	1	BTC	\N	0.5456	0.6700
-1024	38	61	BTC	\N	0.5456	0.6700
-1025	38	121	BTC	0.5719	0.5465	0.6522
-1026	38	181	BTC	\N	0.5465	0.6522
-1027	38	241	BTC	\N	0.5351	0.6522
-1028	38	301	BTC	-0.0027	0.5596	0.5089
-1029	38	361	BTC	\N	0.5596	0.5089
-1030	38	421	BTC	\N	0.5596	0.5089
-1031	38	481	BTC	-0.5423	0.5399	0.2446
-1032	38	541	BTC	0.3669	0.5528	0.2721
-1033	38	601	BTC	0.9918	0.5536	0.4204
-1034	38	661	BTC	0.9682	0.5665	0.5256
-1035	38	721	BTC	0.7906	0.5913	0.5737
-1036	38	781	BTC	\N	0.5864	0.5737
-1037	38	841	BTC	0.4000	0.5677	0.5399
-1038	38	901	BTC	0.4178	0.5630	0.5175
-1039	38	961	BTC	0.3873	0.5577	0.4948
-1040	38	1021	BTC	\N	0.5577	0.4948
-1041	38	1081	BTC	\N	0.5577	0.4948
-1042	38	1141	BTC	\N	0.5577	0.4948
-1043	38	1201	BTC	\N	0.5472	0.4948
-1044	38	1261	BTC	\N	0.5336	0.4948
-1045	38	1321	BTC	\N	0.5249	0.4948
-1046	38	1381	BTC	\N	0.5359	0.4948
-1047	39	1	BTC	\N	0.5217	0.4948
-1048	39	61	BTC	\N	0.5217	0.4948
-1049	39	121	BTC	\N	0.5041	0.4948
-1050	39	181	BTC	\N	0.5555	0.4948
-1051	39	241	BTC	\N	0.5383	0.4948
-1052	39	301	BTC	0.2273	0.5263	0.3534
-1053	39	361	BTC	0.9719	0.5400	0.5877
-1054	39	421	BTC	0.9823	0.5564	0.7078
-1055	39	481	BTC	\N	0.5564	0.7078
-1056	39	541	BTC	0.7506	0.5488	0.7201
-1057	39	601	BTC	\N	0.5315	0.7201
-1058	39	661	BTC	-0.2719	0.5018	0.4450
-1059	39	721	BTC	0.9819	0.5238	0.5751
-1060	39	781	BTC	0.9985	0.5604	0.6677
-1061	39	841	BTC	0.4412	0.5754	0.6221
-1062	39	901	BTC	0.9990	0.6107	0.6931
-1063	39	961	BTC	0.9985	0.6108	0.7477
-1064	39	1021	BTC	0.9990	0.6326	0.7907
-1065	39	1081	BTC	0.3082	0.6297	0.7112
-1066	39	1141	BTC	0.9682	0.6297	0.7522
-1067	39	1201	BTC	0.9984	0.6431	0.7905
-1068	39	1261	BTC	0.6486	0.6310	0.7689
-1069	39	1321	BTC	\N	0.6177	0.7689
-1070	39	1381	BTC	\N	0.6140	0.7689
-1071	40	1	BTC	0.9826	0.6282	0.8094
-1072	40	61	BTC	\N	0.6282	0.8094
-1073	40	121	BTC	\N	0.6305	0.8094
-1074	40	181	BTC	\N	0.6305	0.8094
-1075	40	241	BTC	\N	0.6305	0.8094
-1076	40	301	BTC	\N	0.6569	0.8094
-1077	40	361	BTC	0.9792	0.6698	0.8619
-1078	40	421	BTC	\N	0.6698	0.8619
-1079	40	481	BTC	\N	0.7203	0.8619
-1080	40	541	BTC	0.9732	0.7455	0.8977
-1081	40	601	BTC	\N	0.7348	0.8977
-1082	40	661	BTC	0.9984	0.7361	0.9279
-1083	40	721	BTC	0.9818	0.7444	0.9418
-1084	40	781	BTC	0.9682	0.7538	0.9478
-1085	40	841	BTC	0.9682	0.7774	0.9521
-1086	40	901	BTC	0.9682	0.8004	0.9552
-1087	40	961	BTC	0.9995	0.8259	0.9633
-1088	40	1021	BTC	-0.0784	0.7897	0.7817
-1089	40	1081	BTC	0.1153	0.7638	0.6700
-1090	40	1141	BTC	0.9081	0.7691	0.7086
-1091	40	1201	BTC	0.3280	0.7534	0.6487
-1092	40	1261	BTC	0.0000	0.7274	0.5489
-1093	40	1321	BTC	0.2586	0.7118	0.5052
-1094	40	1381	BTC	0.4879	0.7045	0.5026
-1095	41	1	BTC	0.4879	0.6978	0.5005
-1096	41	61	BTC	0.0164	0.6771	0.4307
-1097	41	121	BTC	-0.9682	0.6287	0.2312
-1098	41	181	BTC	0.4049	0.6223	0.2558
-1099	41	241	BTC	0.0136	0.6054	0.2218
-1100	41	301	BTC	0.0136	0.5995	0.1928
-1101	41	361	BTC	0.9985	0.6002	0.3043
-1102	41	421	BTC	0.9818	0.6002	0.3976
-1103	41	481	BTC	0.9818	0.6105	0.4777
-1104	41	541	BTC	0.8934	0.6144	0.5345
-1105	41	601	BTC	0.7430	0.6178	0.5629
-1106	41	661	BTC	\N	0.6418	0.5629
-1107	41	721	BTC	\N	0.6324	0.5629
-1108	41	781	BTC	\N	0.6219	0.5629
-1109	41	841	BTC	\N	0.6272	0.5629
-1110	41	901	BTC	\N	0.6160	0.5629
-1111	41	961	BTC	\N	0.6040	0.5629
-1112	41	1021	BTC	\N	0.5913	0.5629
-1113	41	1081	BTC	\N	0.6007	0.5629
-1114	41	1141	BTC	\N	0.5880	0.5629
-1115	41	1201	BTC	\N	0.5734	0.5629
-1116	41	1261	BTC	\N	0.5706	0.5629
-1117	41	1321	BTC	\N	0.5706	0.5629
-1118	41	1381	BTC	\N	0.5706	0.5629
-1119	42	1	BTC	0.5267	0.5537	0.5447
-1120	42	61	BTC	0.9682	0.5685	0.7001
-1121	42	121	BTC	\N	0.5685	0.7001
-1122	42	181	BTC	-0.9955	0.5146	0.1436
-1123	42	241	BTC	-0.6486	0.4758	-0.0740
-1124	42	301	BTC	-0.9970	0.4283	-0.2961
-1125	42	361	BTC	\N	0.4099	-0.2961
-1126	42	421	BTC	\N	0.4099	-0.2961
-1127	42	481	BTC	0.9371	0.4269	0.0367
-1128	42	541	BTC	\N	0.4087	0.0367
-1129	42	601	BTC	\N	0.4087	0.0367
-1130	42	661	BTC	0.8885	0.4051	0.2864
-1131	42	721	BTC	0.9970	0.4056	0.4660
-1132	42	781	BTC	0.9682	0.4056	0.5794
-1133	42	841	BTC	0.9990	0.4066	0.6661
-1134	42	901	BTC	-0.1282	0.3700	0.5132
-1135	42	961	BTC	0.9970	0.3700	0.6011
-1136	42	1021	BTC	0.9970	0.4058	0.6697
-1137	42	1081	BTC	0.3178	0.4126	0.6111
-1138	42	1141	BTC	0.3504	0.3940	0.5690
-1139	42	1201	BTC	0.9990	0.4163	0.6365
-1140	42	1261	BTC	-0.0252	0.4155	0.5351
-1141	42	1321	BTC	0.9682	0.4391	0.6002
-1142	42	1381	BTC	-0.9682	0.3906	0.3684
-1143	43	1	BTC	0.0044	0.3745	0.3153
-1144	43	61	BTC	0.3924	0.3870	0.3264
-1145	43	121	BTC	-0.0244	0.4185	0.2765
-1146	43	181	BTC	\N	0.4189	0.2765
-1147	43	241	BTC	0.9843	0.4524	0.3893
-1148	43	301	BTC	0.0044	0.4521	0.3295
-1149	43	361	BTC	-0.9970	0.3833	0.1279
-1150	43	421	BTC	\N	0.3619	0.1279
-1151	43	481	BTC	\N	0.3390	0.1279
-1152	43	541	BTC	0.8225	0.3363	0.2594
-1153	43	601	BTC	\N	0.3207	0.2594
-1154	43	661	BTC	\N	0.3207	0.2594
-1155	43	721	BTC	0.7906	0.3381	0.3790
-1156	43	781	BTC	0.9974	0.3616	0.5066
-1157	43	841	BTC	0.4549	0.3649	0.4967
-1158	43	901	BTC	\N	0.3649	0.4967
-1159	43	961	BTC	\N	0.3649	0.4967
-1160	43	1021	BTC	0.9970	0.3859	0.6108
-1161	43	1081	BTC	\N	0.3859	0.6108
-1162	43	1141	BTC	0.4749	0.3888	0.5791
-1163	43	1201	BTC	0.9360	0.4059	0.6547
-1164	43	1261	BTC	-0.3265	0.3837	0.4620
-1165	43	1321	BTC	0.9716	0.4010	0.5561
-1166	43	1381	BTC	0.6705	0.4087	0.5762
-1167	44	1	BTC	\N	0.4052	0.5762
-1168	44	61	BTC	\N	0.3882	0.5762
-1169	44	121	BTC	\N	0.3882	0.5762
-1170	44	181	BTC	\N	0.4314	0.5762
-1171	44	241	BTC	\N	0.4662	0.5762
-1172	44	301	BTC	\N	0.5150	0.5762
-1173	44	361	BTC	\N	0.5150	0.5762
-1174	44	421	BTC	\N	0.5150	0.5762
-1175	44	481	BTC	\N	0.5005	0.5762
-1176	44	541	BTC	\N	0.5005	0.5762
-1177	44	601	BTC	0.7906	0.5101	0.6746
-1178	44	661	BTC	\N	0.4971	0.6746
-1179	44	721	BTC	\N	0.4792	0.6746
-1180	44	781	BTC	\N	0.4611	0.6746
-1181	44	841	BTC	\N	0.4404	0.6746
-1182	44	901	BTC	\N	0.4632	0.6746
-1183	44	961	BTC	\N	0.4409	0.6746
-1184	44	1021	BTC	\N	0.4168	0.6746
-1185	44	1081	BTC	\N	0.4213	0.6746
-1186	44	1141	BTC	\N	0.4246	0.6746
-1187	44	1201	BTC	\N	0.3959	0.6746
-1188	44	1261	BTC	\N	0.4181	0.6746
-1189	44	1321	BTC	\N	0.3875	0.6746
-1190	44	1381	BTC	\N	0.4673	0.6746
-1191	45	1	BTC	\N	0.4962	0.6746
-1192	45	61	BTC	\N	0.5031	0.6746
-1193	45	121	BTC	\N	0.5408	0.6746
-1194	45	181	BTC	\N	0.5408	0.6746
-1195	45	241	BTC	\N	0.5067	0.6746
-1196	45	301	BTC	\N	0.5485	0.6746
-1197	45	361	BTC	\N	0.6890	0.6746
-1198	45	421	BTC	\N	0.6890	0.6746
-1199	45	481	BTC	\N	0.6890	0.6746
-1200	45	541	BTC	\N	0.6757	0.6746
-1201	45	601	BTC	\N	0.6757	0.6746
-1202	45	661	BTC	\N	0.6757	0.6746
-1203	45	721	BTC	\N	0.6629	0.6746
-1204	45	781	BTC	0.9682	0.6597	0.9554
-1205	45	841	BTC	0.9682	0.7167	0.9621
-1206	45	901	BTC	0.9985	0.7449	0.9758
-1207	45	961	BTC	0.9682	0.7652	0.9735
-1208	45	1021	BTC	\N	0.7420	0.9735
-1209	45	1081	BTC	0.9682	0.7626	0.9720
-1210	45	1141	BTC	0.5267	0.7673	0.8610
-1211	45	1201	BTC	\N	0.7504	0.8610
-1212	45	1261	BTC	0.9985	0.8829	0.8953
-1213	45	1321	BTC	\N	0.8731	0.8953
-1214	45	1381	BTC	\N	0.8984	0.8953
-1215	46	1	BTC	-0.8934	0.6993	0.4003
-1216	46	61	BTC	\N	0.6993	0.4003
-1217	46	121	BTC	0.9747	0.7268	0.5549
-1218	46	181	BTC	\N	0.7268	0.5549
-1219	46	241	BTC	\N	0.7268	0.5549
-1220	46	301	BTC	0.9628	0.7483	0.6743
-1221	46	361	BTC	\N	0.7483	0.6743
-1222	46	421	BTC	\N	0.7483	0.6743
-1223	46	481	BTC	\N	0.7483	0.6743
-1224	46	541	BTC	\N	0.7483	0.6743
-1225	46	601	BTC	\N	0.7441	0.6743
-1226	46	661	BTC	\N	0.7441	0.6743
-1227	46	721	BTC	\N	0.7441	0.6743
-1228	46	781	BTC	\N	0.7441	0.6743
-1229	46	841	BTC	\N	0.7441	0.6743
-1230	46	901	BTC	\N	0.7441	0.6743
-1231	46	961	BTC	\N	0.7441	0.6743
-1232	46	1021	BTC	\N	0.7441	0.6743
-1233	46	1081	BTC	\N	0.7441	0.6743
-1234	46	1141	BTC	\N	0.7441	0.6743
-1235	46	1201	BTC	\N	0.7441	0.6743
-1236	46	1261	BTC	\N	0.7441	0.6743
-1237	46	1321	BTC	\N	0.7441	0.6743
-1238	46	1381	BTC	\N	0.7441	0.6743
-1239	47	1	BTC	\N	0.7441	0.6743
-1240	47	61	BTC	\N	0.7441	0.6743
-1241	47	121	BTC	0.5423	0.7257	0.5614
-1242	47	181	BTC	\N	0.7257	0.5614
-1243	47	241	BTC	0.9920	0.7479	0.7907
-1244	47	301	BTC	\N	0.7479	0.7907
-1245	47	361	BTC	\N	0.7479	0.7907
-1246	47	421	BTC	\N	0.7479	0.7907
-1247	47	481	BTC	\N	0.7479	0.7907
-1248	47	541	BTC	\N	0.7479	0.7907
-1249	47	601	BTC	\N	0.7479	0.7907
-1250	47	661	BTC	\N	0.7479	0.7907
-1251	47	721	BTC	\N	0.7479	0.7907
-1252	47	781	BTC	0.9985	0.7504	0.9276
-1253	47	841	BTC	0.9982	0.7529	0.9581
-1254	47	901	BTC	0.9984	0.7529	0.9715
-1255	47	961	BTC	\N	0.7334	0.9715
-1256	47	1021	BTC	0.9882	0.7546	0.9766
-1257	47	1081	BTC	0.9531	0.7533	0.9705
-1258	47	1141	BTC	0.9686	0.7902	0.9700
-1259	47	1201	BTC	0.9955	0.8060	0.9754
-1260	47	1261	BTC	0.9818	0.8047	0.9767
-1261	47	1321	BTC	\N	0.8047	0.9767
-1262	47	1381	BTC	0.5106	0.7837	0.8803
-1263	48	1	BTC	\N	0.9127	0.8803
-1264	48	61	BTC	\N	0.9127	0.8803
-1265	48	121	BTC	\N	0.9075	0.8803
-1266	48	181	BTC	\N	0.9075	0.8803
-1267	48	241	BTC	\N	0.9075	0.8803
-1268	48	301	BTC	\N	0.9025	0.8803
-1269	48	361	BTC	0.9682	0.9080	0.9120
-1270	48	421	BTC	0.9982	0.9149	0.9373
-1271	48	481	BTC	0.9682	0.9187	0.9451
-1272	48	541	BTC	\N	0.9187	0.9451
-1273	48	601	BTC	\N	0.9187	0.9451
-1274	48	661	BTC	\N	0.9187	0.9451
-1275	48	721	BTC	0.9981	0.9240	0.9615
-1276	48	781	BTC	\N	0.9240	0.9615
-1277	48	841	BTC	\N	0.9240	0.9615
-1278	48	901	BTC	\N	0.9240	0.9615
-1279	48	961	BTC	\N	0.9240	0.9615
-1280	48	1021	BTC	-0.9992	0.8038	0.2013
-1281	48	1081	BTC	\N	0.8038	0.2013
-1282	48	1141	BTC	0.9985	0.8152	0.4727
-1283	48	1201	BTC	0.3823	0.7912	0.4472
-1284	48	1261	BTC	\N	0.7912	0.4472
-1285	48	1321	BTC	-0.7003	0.7127	0.1339
-1286	48	1381	BTC	0.7906	0.7166	0.2912
-1287	49	1	BTC	0.9858	0.7294	0.4416
-1288	49	61	BTC	\N	0.7294	0.4416
-1289	49	121	BTC	\N	0.7388	0.4416
-1290	49	181	BTC	-0.9992	0.6560	0.0820
-1291	49	241	BTC	\N	0.6392	0.0820
-1292	49	301	BTC	0.5106	0.6331	0.1889
-1293	49	361	BTC	\N	0.6331	0.1889
-1294	49	421	BTC	\N	0.6331	0.1889
-1295	49	481	BTC	\N	0.6331	0.1889
-1296	49	541	BTC	0.9803	0.6489	0.4315
-1297	49	601	BTC	\N	0.6489	0.4315
-1298	49	661	BTC	-0.8834	0.5822	0.0504
-1299	49	721	BTC	-0.5859	0.5336	-0.1091
-1300	49	781	BTC	-0.9994	0.4503	-0.3088
-1301	49	841	BTC	0.9100	0.4467	-0.0582
-1302	49	901	BTC	-0.9993	0.3634	-0.2387
-1303	49	961	BTC	\N	0.3634	-0.2387
-1304	49	1021	BTC	-0.9953	0.2808	-0.3925
-1305	49	1081	BTC	-0.9992	0.1994	-0.5078
-1306	49	1141	BTC	\N	0.1660	-0.5078
-1307	49	1201	BTC	0.6369	0.1504	-0.2767
-1308	49	1261	BTC	-0.0292	0.1064	-0.2299
-1309	49	1321	BTC	0.7003	0.1312	-0.0634
-1310	49	1381	BTC	\N	0.1147	-0.0634
-1311	50	1	BTC	0.9325	0.1488	0.1283
-1312	50	61	BTC	\N	0.1488	0.1283
-1313	50	121	BTC	\N	0.1488	0.1283
-1314	50	181	BTC	0.9493	0.1808	0.3156
-1315	50	241	BTC	\N	0.1808	0.3156
-1316	50	301	BTC	\N	0.1808	0.3156
-1317	50	361	BTC	0.0076	0.1424	0.2357
-1318	50	421	BTC	\N	0.1067	0.2357
-1319	50	481	BTC	\N	0.0692	0.2357
-1320	50	541	BTC	\N	0.0692	0.2357
-1321	50	601	BTC	\N	0.0692	0.2357
-1322	50	661	BTC	\N	0.0692	0.2357
-1323	50	721	BTC	\N	0.0270	0.2357
-1324	50	781	BTC	\N	0.0270	0.2357
-1325	50	841	BTC	\N	0.0270	0.2357
-1326	50	901	BTC	\N	0.0270	0.2357
-1327	50	961	BTC	\N	0.0270	0.2357
-1328	50	1021	BTC	\N	0.0759	0.2357
-1329	50	1081	BTC	\N	0.0759	0.2357
-1330	50	1141	BTC	\N	0.0298	0.2357
-1331	50	1201	BTC	\N	0.0112	0.2357
-1332	50	1261	BTC	\N	0.0112	0.2357
-1333	50	1321	BTC	\N	0.0507	0.2357
-1334	50	1381	BTC	\N	0.0072	0.2357
-1335	51	1	BTC	\N	-0.0540	0.2357
-1336	51	61	BTC	\N	-0.0540	0.2357
-1337	51	121	BTC	\N	-0.0540	0.2357
-1338	51	181	BTC	\N	0.0091	0.2357
-1339	51	241	BTC	\N	0.0091	0.2357
-1340	51	301	BTC	\N	-0.0268	0.2357
-1341	51	361	BTC	\N	-0.0268	0.2357
-1342	51	421	BTC	\N	-0.0268	0.2357
-1343	51	481	BTC	\N	-0.0268	0.2357
-1344	51	541	BTC	\N	-0.1042	0.2357
-1345	51	601	BTC	\N	-0.1042	0.2357
-1346	51	661	BTC	\N	-0.0393	0.2357
-1347	51	721	BTC	\N	0.0104	0.2357
-1348	51	781	BTC	\N	0.1114	0.2357
-1349	51	841	BTC	\N	0.0226	0.2357
-1350	51	901	BTC	\N	0.1504	0.2357
-1351	51	961	BTC	\N	0.1504	0.2357
-1352	51	1021	BTC	\N	0.3140	0.2357
-1353	51	1081	BTC	\N	0.5329	0.2357
-1354	51	1141	BTC	\N	0.5329	0.2357
-1355	51	1201	BTC	\N	0.5121	0.2357
-1356	51	1261	BTC	\N	0.6474	0.2357
-1357	51	1321	BTC	\N	0.6298	0.2357
-1358	51	1381	BTC	\N	0.6298	0.2357
-1359	52	1	BTC	\N	0.4785	0.2357
-1360	52	61	BTC	\N	0.4785	0.2357
-1361	52	121	BTC	\N	0.4785	0.2357
-1362	52	181	BTC	\N	0.0076	0.2357
-1363	52	241	BTC	\N	0.0076	0.2357
-1364	52	301	BTC	\N	0.0076	0.2357
-1365	52	361	BTC	\N	\N	0.2357
-1366	52	421	BTC	\N	\N	0.2357
-1367	52	481	BTC	\N	\N	0.2357
-1368	52	541	BTC	\N	\N	0.2357
-1369	52	601	BTC	\N	\N	0.2357
-1370	52	661	BTC	\N	\N	0.2357
-1371	52	721	BTC	0.5984	0.5984	0.5978
-1372	52	781	BTC	0.9995	0.7990	0.8128
-1373	52	841	BTC	\N	0.7990	0.8128
-1374	52	901	BTC	0.6369	0.7449	0.7396
-1375	52	961	BTC	0.7906	0.7564	0.7562
-1376	52	1021	BTC	\N	0.7564	0.7562
-1377	52	1081	BTC	0.9702	0.7991	0.8207
-1378	52	1141	BTC	0.9729	0.8281	0.8600
-1379	52	1201	BTC	0.9818	0.8500	0.8880
-1380	52	1261	BTC	\N	0.8500	0.8880
-1381	52	1321	BTC	\N	0.8500	0.8880
-1382	52	1381	BTC	\N	0.8500	0.8880
-1383	53	1	BTC	-0.2808	0.7087	0.5500
-1384	53	61	BTC	\N	0.7087	0.5500
-1385	53	121	BTC	0.9837	0.7392	0.6705
-1386	53	181	BTC	-0.8652	0.5788	0.2976
-1387	53	241	BTC	\N	0.5788	0.2976
-1388	53	301	BTC	0.9657	0.6140	0.4608
-1389	53	361	BTC	0.9986	0.6460	0.5791
-1390	53	421	BTC	0.9702	0.6710	0.6582
-1391	53	481	BTC	0.9729	0.6925	0.7178
-1392	53	541	BTC	0.5859	0.6854	0.6942
-1393	53	601	BTC	-0.0007	0.6425	0.5751
-1394	53	661	BTC	-0.0311	0.6029	0.4750
-1395	53	721	BTC	0.9882	0.6243	0.5571
-1396	53	781	BTC	0.9855	0.6433	0.6239
-1397	53	841	BTC	-0.0281	0.6098	0.5245
-1398	53	901	BTC	-0.0152	0.5800	0.4438
-1399	53	961	BTC	-0.0152	0.5529	0.3762
-1400	53	1021	BTC	-0.9993	0.4855	0.1765
-1401	53	1081	BTC	0.9325	0.5041	0.2850
-1402	53	1141	BTC	\N	0.5041	0.2850
-1403	53	1201	BTC	-0.9992	0.4439	0.0790
-1404	53	1261	BTC	-0.9988	0.3885	-0.0893
-1405	53	1321	BTC	-0.7269	0.3471	-0.1866
-1406	53	1381	BTC	-0.9993	0.2991	-0.3084
-1407	54	1	BTC	\N	0.2991	-0.3084
-1408	54	61	BTC	\N	0.2991	-0.3084
-1409	54	121	BTC	-0.9990	0.2543	-0.4375
-1410	54	181	BTC	-0.9990	0.2125	-0.5372
-1411	54	241	BTC	-0.0249	0.2049	-0.4501
-1412	54	301	BTC	-0.3504	0.1875	-0.4338
-1413	54	361	BTC	-0.9972	0.1516	-0.5234
-1414	54	421	BTC	-0.9993	0.1178	-0.5972
-1415	54	481	BTC	-0.9963	0.0859	-0.6578
-1416	54	541	BTC	-0.0311	0.0827	-0.5644
-1417	54	601	BTC	\N	0.0827	-0.5644
-1418	54	661	BTC	\N	0.0827	-0.5644
-1419	54	721	BTC	\N	0.0679	-0.5644
-1420	54	781	BTC	\N	0.0405	-0.5644
-1421	54	841	BTC	\N	0.0405	-0.5644
-1422	54	901	BTC	\N	0.0225	-0.5644
-1423	54	961	BTC	\N	-0.0015	-0.5644
-1424	54	1021	BTC	\N	-0.0015	-0.5644
-1425	54	1081	BTC	\N	-0.0329	-0.5644
-1426	54	1141	BTC	\N	-0.0664	-0.5644
-1427	54	1201	BTC	\N	-0.1025	-0.5644
-1428	54	1261	BTC	\N	-0.1025	-0.5644
-1429	54	1321	BTC	\N	-0.1025	-0.5644
-1430	54	1381	BTC	\N	-0.1025	-0.5644
-1431	55	1	BTC	\N	-0.0962	-0.5644
-1432	55	61	BTC	-0.6124	-0.1140	-0.5930
-1433	55	121	BTC	-0.9970	-0.1823	-0.7575
-1434	55	181	BTC	\N	-0.1579	-0.7575
-1435	55	241	BTC	\N	-0.1579	-0.7575
-1436	55	301	BTC	\N	-0.1995	-0.7575
-1437	55	361	BTC	0.0246	-0.2356	-0.4296
-1438	55	421	BTC	\N	-0.2820	-0.4296
-1439	55	481	BTC	\N	-0.3321	-0.4296
-1440	55	541	BTC	\N	-0.3704	-0.4296
-1441	55	601	BTC	\N	-0.3865	-0.4296
-1442	55	661	BTC	0.9873	-0.3422	0.2244
-1443	55	721	BTC	0.9987	-0.3417	0.4935
-1444	55	781	BTC	0.7096	-0.3537	0.5554
-1445	55	841	BTC	0.3824	-0.3359	0.5124
-1446	55	901	BTC	0.7579	-0.3023	0.5671
-1447	55	961	BTC	0.9806	-0.2590	0.6516
-1448	55	1021	BTC	0.9682	-0.1734	0.7120
-1449	55	1081	BTC	\N	-0.2237	0.7120
-1450	55	1141	BTC	\N	-0.2237	0.7120
-1451	55	1201	BTC	0.9732	-0.1340	0.7712
-1452	55	1261	BTC	0.9732	-0.0444	0.8131
-1453	55	1321	BTC	\N	-0.0119	0.8131
-1454	55	1381	BTC	\N	0.0375	0.8131
-1455	56	1	BTC	\N	0.0375	0.8131
-1456	56	61	BTC	\N	0.0375	0.8131
-1457	56	121	BTC	\N	0.0920	0.8131
-1458	56	181	BTC	\N	0.1526	0.8131
-1459	56	241	BTC	\N	0.1631	0.8131
-1460	56	301	BTC	\N	0.1952	0.8131
-1461	56	361	BTC	-0.9325	0.1992	0.0640
-1462	56	421	BTC	0.5267	0.2946	0.2173
+1	25	121	BTC	0.5267	0.5267	0.5267
+2	25	181	BTC	\N	0.5267	0.5267
+3	25	241	BTC	\N	0.5267	0.5267
+4	25	301	BTC	\N	0.5267	0.5267
+5	25	361	BTC	0.0044	0.2655	0.1928
+6	25	421	BTC	\N	0.2655	0.1928
+7	25	481	BTC	0.3433	0.2915	0.2620
+8	25	541	BTC	\N	0.2915	0.2620
+9	25	601	BTC	-0.9990	-0.0312	-0.2168
+10	25	661	BTC	\N	-0.0312	-0.2168
+11	25	721	BTC	0.4412	0.0633	0.0041
+12	25	781	BTC	0.7430	0.1766	0.2105
+13	25	841	BTC	0.8934	0.2790	0.3769
+14	25	901	BTC	-0.0339	0.2399	0.2867
+15	25	961	BTC	-0.9990	0.1022	0.0269
+16	25	1021	BTC	0.9732	0.1893	0.2058
+17	25	1081	BTC	\N	0.1893	0.2058
+18	25	1141	BTC	-0.9953	0.0816	-0.0357
+19	25	1201	BTC	0.9982	0.1580	0.1590
+20	25	1261	BTC	-0.5859	0.1008	0.0260
+21	25	1321	BTC	0.9858	0.1640	0.1900
+22	25	1381	BTC	\N	0.1640	0.1900
+23	26	1	BTC	\N	0.1640	0.1900
+24	26	61	BTC	\N	0.1640	0.1900
+25	26	121	BTC	0.9682	0.2176	0.3708
+26	26	181	BTC	\N	0.2176	0.3708
+27	26	241	BTC	\N	0.2176	0.3708
+28	26	301	BTC	\N	0.2176	0.3708
+29	26	361	BTC	-0.9996	0.1415	-0.0290
+30	26	421	BTC	0.9818	0.1910	0.2256
+31	26	481	BTC	\N	0.1910	0.2256
+32	26	541	BTC	\N	0.1910	0.2256
+33	26	601	BTC	\N	0.1910	0.2256
+34	26	661	BTC	\N	0.1910	0.2256
+35	26	721	BTC	\N	0.1910	0.2256
+36	26	781	BTC	\N	0.1910	0.2256
+37	26	841	BTC	\N	0.1910	0.2256
+38	26	901	BTC	\N	0.1910	0.2256
+39	26	961	BTC	\N	0.1910	0.2256
+40	26	1021	BTC	\N	0.1910	0.2256
+41	26	1081	BTC	\N	0.1910	0.2256
+42	26	1141	BTC	0.0000	0.1804	0.0939
+43	26	1201	BTC	0.0550	0.1738	0.0782
+44	26	1261	BTC	0.7964	0.2049	0.3060
+45	26	1321	BTC	0.3082	0.2098	0.3066
+46	26	1381	BTC	0.0710	0.2035	0.2510
+47	27	1	BTC	\N	0.2035	0.2510
+48	27	61	BTC	\N	0.2035	0.2510
+49	27	121	BTC	\N	0.1881	0.2510
+50	27	181	BTC	\N	0.1881	0.2510
+51	27	241	BTC	0.9325	0.2220	0.4729
+52	27	301	BTC	-0.9993	0.1689	0.0708
+53	27	361	BTC	\N	0.1763	0.0708
+54	27	421	BTC	\N	0.1763	0.0708
+55	27	481	BTC	0.6705	0.1912	0.2481
+56	27	541	BTC	0.5994	0.2089	0.3374
+57	27	601	BTC	-0.0010	0.2523	0.2606
+58	27	661	BTC	0.9682	0.2822	0.4074
+59	27	721	BTC	0.9682	0.3041	0.5157
+60	27	781	BTC	0.9682	0.3135	0.5982
+61	27	841	BTC	-0.9970	0.2347	0.3210
+62	27	901	BTC	0.9531	0.2759	0.4266
+63	27	961	BTC	0.9985	0.3591	0.5190
+64	27	1021	BTC	0.9792	0.3593	0.5913
+65	27	1081	BTC	0.9984	0.3849	0.6538
+66	27	1141	BTC	0.0737	0.4277	0.5665
+67	27	1201	BTC	0.4108	0.4042	0.5435
+68	27	1261	BTC	0.0476	0.4295	0.4712
+69	27	1321	BTC	\N	0.4063	0.4712
+70	27	1381	BTC	-0.0007	0.3901	0.3945
+71	28	1	BTC	\N	0.3901	0.3945
+72	28	61	BTC	\N	0.3901	0.3945
+73	28	121	BTC	\N	0.3660	0.3945
+74	28	181	BTC	\N	0.3660	0.3945
+75	28	241	BTC	0.9682	0.3901	0.5376
+76	28	301	BTC	0.2047	0.3829	0.4632
+77	28	361	BTC	0.6124	0.4449	0.4938
+78	28	421	BTC	-0.5574	0.3857	0.2927
+79	28	481	BTC	0.9682	0.4073	0.4148
+80	28	541	BTC	\N	0.4073	0.4148
+81	28	601	BTC	0.9855	0.4279	0.5256
+82	28	661	BTC	0.7096	0.4377	0.5592
+83	28	721	BTC	-0.9970	0.3898	0.2880
+84	28	781	BTC	-0.3265	0.3667	0.1851
+85	28	841	BTC	0.9682	0.3855	0.3119
+86	28	901	BTC	-0.3371	0.3636	0.2097
+87	28	961	BTC	0.9732	0.3816	0.3271
+88	28	1021	BTC	-0.0175	0.3702	0.2752
+89	28	1081	BTC	0.9325	0.3858	0.3725
+90	28	1141	BTC	0.3873	0.3965	0.3747
+91	28	1201	BTC	-0.9994	0.3672	0.1767
+92	28	1261	BTC	0.0064	0.3453	0.1524
+93	28	1321	BTC	-0.9992	0.3090	-0.0103
+94	28	1381	BTC	-0.8308	0.2839	-0.1253
+95	29	1	BTC	-0.9955	0.2494	-0.2464
+96	29	61	BTC	0.9918	0.2689	-0.0751
+97	29	121	BTC	0.9842	0.2872	0.0708
+98	29	181	BTC	-0.3362	0.2716	0.0150
+99	29	241	BTC	0.3178	0.2563	0.0563
+100	29	301	BTC	0.0982	0.2837	0.0620
+101	29	361	BTC	0.7906	0.2961	0.1610
+102	29	421	BTC	0.6486	0.3045	0.2270
+103	29	481	BTC	-0.5205	0.2761	0.1260
+104	29	541	BTC	0.9325	0.2840	0.2348
+105	29	601	BTC	-0.0311	0.2833	0.1990
+106	29	661	BTC	-0.2726	0.2538	0.1355
+107	29	721	BTC	0.9985	0.2545	0.2515
+108	29	781	BTC	0.5984	0.2457	0.2980
+109	29	841	BTC	0.9985	0.2932	0.3920
+110	29	901	BTC	-0.6808	0.2543	0.2482
+111	29	961	BTC	0.9935	0.2542	0.3480
+112	29	1021	BTC	0.9882	0.2544	0.4337
+113	29	1081	BTC	0.9970	0.2544	0.5090
+114	29	1141	BTC	0.5719	0.2662	0.5174
+115	29	1201	BTC	0.9985	0.2802	0.5817
+116	29	1261	BTC	-0.1484	0.2756	0.4842
+117	29	1321	BTC	0.9657	0.2916	0.5485
+118	29	1381	BTC	0.7906	0.3100	0.5808
+119	30	1	BTC	0.9818	0.3253	0.6344
+120	30	61	BTC	0.9371	0.3389	0.6748
+121	30	121	BTC	0.7906	0.3487	0.6902
+122	30	181	BTC	\N	0.3487	0.6902
+123	30	241	BTC	0.0876	0.3296	0.5993
+124	30	301	BTC	0.9974	0.3468	0.6583
+125	30	361	BTC	-0.0008	0.3335	0.5620
+126	30	421	BTC	0.9682	0.3666	0.6206
+127	30	481	BTC	\N	0.3533	0.6206
+128	30	541	BTC	\N	0.3533	0.6206
+129	30	601	BTC	0.2165	0.3362	0.5473
+130	30	661	BTC	0.8176	0.3386	0.5941
+131	30	721	BTC	0.9682	0.3822	0.6564
+132	30	781	BTC	-0.0007	0.3895	0.5505
+133	30	841	BTC	\N	0.3763	0.5505
+134	30	901	BTC	\N	0.3929	0.5505
+135	30	961	BTC	-0.5267	0.3580	0.3368
+136	30	1021	BTC	0.6369	0.3733	0.3927
+137	30	1081	BTC	0.9818	0.3744	0.4969
+138	30	1141	BTC	0.9806	0.3882	0.5789
+139	30	1201	BTC	\N	0.4212	0.5789
+140	30	1261	BTC	-0.0439	0.4200	0.4642
+141	30	1321	BTC	\N	0.4547	0.4642
+142	30	1381	BTC	\N	0.4868	0.4642
+143	31	1	BTC	\N	0.5248	0.4642
+144	31	61	BTC	0.9477	0.5237	0.5832
+145	31	121	BTC	\N	0.5115	0.5832
+146	31	181	BTC	0.9981	0.5467	0.6856
+147	31	241	BTC	\N	0.5528	0.6856
+148	31	301	BTC	0.9716	0.5765	0.7563
+149	31	361	BTC	\N	0.5705	0.7563
+150	31	421	BTC	\N	0.5683	0.7563
+151	31	481	BTC	\N	0.6003	0.7563
+152	31	541	BTC	0.9493	0.6008	0.8151
+153	31	601	BTC	0.9747	0.6304	0.8566
+154	31	661	BTC	-0.9325	0.6110	0.4436
+155	31	721	BTC	0.3721	0.5925	0.4285
+156	31	781	BTC	0.0377	0.5760	0.3522
+157	31	841	BTC	0.9818	0.5756	0.4680
+158	31	901	BTC	0.0044	0.5957	0.3868
+159	31	961	BTC	0.0742	0.5687	0.3343
+160	31	1021	BTC	0.2559	0.5471	0.3216
+161	31	1081	BTC	-0.9993	0.4884	0.1131
+162	31	1141	BTC	-0.0144	0.4712	0.0935
+163	31	1201	BTC	0.9990	0.4712	0.2301
+164	31	1261	BTC	\N	0.4900	0.2301
+165	31	1321	BTC	\N	0.4751	0.2301
+166	31	1381	BTC	\N	0.4649	0.2301
+167	32	1	BTC	\N	0.4477	0.2301
+168	32	61	BTC	0.9840	0.4493	0.4079
+169	32	121	BTC	\N	0.4375	0.4079
+170	32	181	BTC	\N	0.4375	0.4079
+171	32	241	BTC	0.3246	0.4457	0.3858
+172	32	301	BTC	\N	0.4259	0.3858
+173	32	361	BTC	0.7506	0.4528	0.4812
+174	32	421	BTC	0.9628	0.4526	0.5928
+175	32	481	BTC	-0.5574	0.4178	0.3501
+176	32	541	BTC	0.7906	0.4302	0.4364
+177	32	601	BTC	-0.2407	0.4150	0.3116
+178	32	661	BTC	-0.9997	0.3544	0.0816
+179	32	721	BTC	0.9970	0.3553	0.2357
+180	32	781	BTC	0.9990	0.3887	0.3598
+181	32	841	BTC	0.8885	0.4048	0.4433
+182	32	901	BTC	0.6808	0.4134	0.4799
+183	32	961	BTC	0.6369	0.4498	0.5036
+184	32	1021	BTC	-0.0281	0.4290	0.4247
+185	32	1081	BTC	-0.0011	0.3983	0.3625
+186	32	1141	BTC	0.3824	0.3796	0.3653
+187	32	1201	BTC	0.2488	0.3756	0.3487
+188	32	1261	BTC	-0.6705	0.3566	0.2046
+189	32	1321	BTC	0.7717	0.3688	0.2841
+190	32	1381	BTC	\N	0.3688	0.2841
+191	33	1	BTC	-0.6705	0.3391	0.1339
+192	33	61	BTC	0.9953	0.3405	0.2663
+193	33	121	BTC	0.9682	0.3579	0.3720
+194	33	181	BTC	0.3280	0.3393	0.3655
+195	33	241	BTC	\N	0.3393	0.3655
+196	33	301	BTC	0.0015	0.3124	0.3055
+197	33	361	BTC	0.9468	0.3295	0.4079
+198	33	421	BTC	0.0015	0.3209	0.3447
+199	33	481	BTC	\N	0.3209	0.3447
+200	33	541	BTC	0.4266	0.3071	0.3588
+201	33	601	BTC	\N	0.2891	0.3588
+202	33	661	BTC	\N	0.3230	0.3588
+203	33	721	BTC	\N	0.3216	0.3588
+204	33	781	BTC	\N	0.3300	0.3588
+205	33	841	BTC	\N	0.3102	0.3588
+206	33	901	BTC	\N	0.3198	0.3588
+207	33	961	BTC	\N	0.3277	0.3588
+208	33	1021	BTC	\N	0.3301	0.3588
+209	33	1081	BTC	\N	0.3759	0.3588
+210	33	1141	BTC	\N	0.3899	0.3588
+211	33	1201	BTC	\N	0.3673	0.3588
+212	33	1261	BTC	\N	0.3673	0.3588
+213	33	1321	BTC	\N	0.3673	0.3588
+214	33	1381	BTC	\N	0.3673	0.3588
+215	34	1	BTC	\N	0.3673	0.3588
+216	34	61	BTC	-0.9984	0.2939	-0.4946
+217	34	121	BTC	\N	0.2939	-0.4946
+218	34	181	BTC	\N	0.2939	-0.4946
+219	34	241	BTC	\N	0.2927	-0.4946
+220	34	301	BTC	\N	0.2927	-0.4946
+221	34	361	BTC	\N	0.2744	-0.4946
+222	34	421	BTC	\N	0.2457	-0.4946
+223	34	481	BTC	\N	0.2806	-0.4946
+224	34	541	BTC	\N	0.2575	-0.4946
+225	34	601	BTC	\N	0.2812	-0.4946
+226	34	661	BTC	\N	0.3452	-0.4946
+227	34	721	BTC	\N	0.3109	-0.4946
+228	34	781	BTC	0.6997	0.2952	0.4344
+229	34	841	BTC	0.9682	0.2994	0.6869
+230	34	901	BTC	\N	0.2782	0.6869
+231	34	961	BTC	\N	0.2571	0.6869
+232	34	1021	BTC	0.5719	0.2924	0.6385
+233	34	1081	BTC	\N	0.3107	0.6385
+234	34	1141	BTC	\N	0.3059	0.6385
+235	34	1201	BTC	0.9829	0.3549	0.7737
+236	34	1261	BTC	0.9601	0.4636	0.8318
+237	34	1321	BTC	\N	0.4416	0.8318
+238	34	1381	BTC	\N	0.4416	0.8318
+239	35	1	BTC	\N	0.5271	0.8318
+240	35	61	BTC	\N	0.4881	0.8318
+241	35	121	BTC	\N	0.4444	0.8318
+242	35	181	BTC	\N	0.4561	0.8318
+243	35	241	BTC	\N	0.4561	0.8318
+244	35	301	BTC	\N	0.5066	0.8318
+245	35	361	BTC	\N	0.4516	0.8318
+246	35	421	BTC	\N	0.5159	0.8318
+247	35	481	BTC	\N	0.5159	0.8318
+248	35	541	BTC	\N	0.5307	0.8318
+249	35	601	BTC	\N	0.5307	0.8318
+250	35	661	BTC	\N	0.5307	0.8318
+251	35	721	BTC	0.9726	0.5939	0.9342
+252	35	781	BTC	0.0731	0.5288	0.5413
+253	35	841	BTC	0.2268	0.4952	0.4328
+254	35	901	BTC	0.2793	0.4736	0.3891
+255	35	961	BTC	0.0246	0.4328	0.2990
+256	35	1021	BTC	-0.0239	0.3947	0.2273
+257	35	1081	BTC	0.7906	0.4252	0.3422
+258	35	1141	BTC	\N	0.4252	0.3422
+259	35	1201	BTC	0.5994	0.4376	0.3971
+260	35	1261	BTC	0.7096	0.4558	0.4589
+261	35	1321	BTC	0.9984	0.4897	0.5591
+262	35	1381	BTC	-0.6597	0.4221	0.3440
+263	36	1	BTC	0.7906	0.4425	0.4195
+264	36	61	BTC	\N	0.5273	0.4195
+265	36	121	BTC	\N	0.5273	0.4195
+266	36	181	BTC	\N	0.5273	0.4195
+267	36	241	BTC	-0.5859	0.4655	0.1876
+268	36	301	BTC	0.7906	0.4826	0.3144
+269	36	361	BTC	\N	0.4826	0.3144
+270	36	421	BTC	\N	0.4826	0.3144
+271	36	481	BTC	0.3074	0.4738	0.3127
+272	36	541	BTC	0.9990	0.4988	0.4635
+273	36	601	BTC	0.0000	0.4761	0.3697
+274	36	661	BTC	\N	0.4761	0.3697
+275	36	721	BTC	-0.9997	0.4120	0.0792
+276	36	781	BTC	0.5574	0.4058	0.1732
+277	36	841	BTC	0.9853	0.4065	0.3234
+278	36	901	BTC	\N	0.4065	0.3234
+279	36	961	BTC	\N	0.4065	0.3234
+280	36	1021	BTC	\N	0.3990	0.3234
+281	36	1081	BTC	\N	0.3990	0.3234
+282	36	1141	BTC	\N	0.3990	0.3234
+283	36	1201	BTC	0.9771	0.3988	0.5220
+284	36	1261	BTC	-0.5574	0.3298	0.2418
+285	36	1321	BTC	0.0078	0.3158	0.1879
+286	36	1381	BTC	-0.0212	0.3017	0.1440
+287	37	1	BTC	0.9970	0.3296	0.3104
+288	37	61	BTC	\N	0.3296	0.3104
+289	37	121	BTC	0.0904	0.3204	0.2650
+290	37	181	BTC	0.9682	0.3443	0.4002
+291	37	241	BTC	-0.6486	0.3089	0.2098
+292	37	301	BTC	\N	0.3089	0.2098
+293	37	361	BTC	0.4266	0.3129	0.2520
+294	37	421	BTC	\N	0.3129	0.2520
+295	37	481	BTC	\N	0.3129	0.2520
+296	37	541	BTC	0.0245	0.3033	0.1996
+297	37	601	BTC	-0.2719	0.2848	0.1007
+298	37	661	BTC	\N	0.2848	0.1007
+299	37	721	BTC	0.3688	0.2653	0.1592
+300	37	781	BTC	-0.5423	0.2454	0.0181
+301	37	841	BTC	0.9686	0.2694	0.1972
+302	37	901	BTC	0.1131	0.2640	0.1822
+303	37	961	BTC	0.9985	0.2954	0.3217
+304	37	1021	BTC	0.7906	0.3217	0.3989
+305	37	1081	BTC	0.4191	0.3097	0.4021
+306	37	1141	BTC	-0.0152	0.2996	0.3372
+307	37	1201	BTC	0.4108	0.2937	0.3484
+308	37	1261	BTC	0.3873	0.2836	0.3542
+309	37	1321	BTC	-0.0311	0.2514	0.2976
+310	37	1381	BTC	0.9628	0.3021	0.3940
+311	38	1	BTC	\N	0.2864	0.3940
+312	38	61	BTC	\N	0.2864	0.3940
+313	38	121	BTC	-0.9992	0.2462	0.1402
+314	38	181	BTC	\N	0.2462	0.1402
+315	38	241	BTC	\N	0.2730	0.1402
+316	38	301	BTC	0.1153	0.2513	0.1347
+317	38	361	BTC	\N	0.2513	0.1347
+318	38	421	BTC	\N	0.2513	0.1347
+319	38	481	BTC	0.9955	0.2735	0.3512
+320	38	541	BTC	0.8862	0.2698	0.4715
+321	38	601	BTC	-0.6486	0.2489	0.2407
+322	38	661	BTC	0.4549	0.2553	0.2819
+323	38	721	BTC	0.3669	0.2980	0.2973
+324	38	781	BTC	\N	0.2897	0.2973
+325	38	841	BTC	0.2273	0.2652	0.2837
+326	38	901	BTC	-0.9325	0.2278	0.0607
+327	38	961	BTC	0.5267	0.2368	0.1421
+328	38	1021	BTC	\N	0.2368	0.1421
+329	38	1081	BTC	\N	0.2368	0.1421
+330	38	1141	BTC	\N	0.2368	0.1421
+331	38	1201	BTC	\N	0.2137	0.1421
+332	38	1261	BTC	\N	0.2386	0.1421
+333	38	1321	BTC	\N	0.2463	0.1421
+334	38	1381	BTC	\N	0.2555	0.1421
+335	39	1	BTC	\N	0.2290	0.1421
+336	39	61	BTC	\N	0.2290	0.1421
+337	39	121	BTC	\N	0.2342	0.1421
+338	39	181	BTC	\N	0.2059	0.1421
+339	39	241	BTC	\N	0.2401	0.1421
+340	39	301	BTC	0.9732	0.2683	0.5815
+341	39	361	BTC	-0.6705	0.2261	0.1071
+342	39	421	BTC	0.9818	0.2541	0.3732
+343	39	481	BTC	\N	0.2541	0.3732
+344	39	541	BTC	0.9985	0.2902	0.5534
+345	39	601	BTC	\N	0.3118	0.5534
+346	39	661	BTC	0.5106	0.3192	0.5416
+347	39	721	BTC	-0.9978	0.2685	0.1684
+348	39	781	BTC	0.0015	0.2887	0.1319
+349	39	841	BTC	-0.7506	0.2250	-0.0458
+350	39	901	BTC	0.0675	0.2233	-0.0245
+351	39	961	BTC	0.0113	0.1868	-0.0181
+352	39	1021	BTC	0.5719	0.1787	0.0828
+353	39	1081	BTC	0.9970	0.2001	0.2334
+354	39	1141	BTC	0.9985	0.2376	0.3556
+355	39	1201	BTC	-0.7906	0.1931	0.1772
+356	39	1261	BTC	0.9984	0.2157	0.3022
+357	39	1321	BTC	\N	0.2252	0.3022
+358	39	1381	BTC	\N	0.1957	0.3022
+359	40	1	BTC	-0.0009	0.1882	0.2448
+360	40	61	BTC	\N	0.1882	0.2448
+361	40	121	BTC	\N	0.2357	0.2448
+362	40	181	BTC	\N	0.2357	0.2448
+363	40	241	BTC	\N	0.2357	0.2448
+364	40	301	BTC	\N	0.2407	0.2448
+365	40	361	BTC	-0.1998	0.2231	0.1074
+366	40	421	BTC	\N	0.2231	0.1074
+367	40	481	BTC	\N	0.1909	0.1074
+368	40	541	BTC	0.7579	0.1855	0.3168
+369	40	601	BTC	\N	0.2218	0.3168
+370	40	661	BTC	0.3115	0.2156	0.3152
+371	40	721	BTC	0.9682	0.2417	0.4831
+372	40	781	BTC	-0.5574	0.2084	0.2450
+373	40	841	BTC	0.9882	0.2401	0.4003
+374	40	901	BTC	-0.9993	0.2373	0.1285
+375	40	961	BTC	0.9803	0.2562	0.2844
+376	40	1021	BTC	0.9758	0.2850	0.4050
+377	40	1081	BTC	0.9682	0.3113	0.4993
+378	40	1141	BTC	0.4178	0.3152	0.4861
+379	40	1201	BTC	0.4547	0.3202	0.4812
+380	40	1261	BTC	0.8225	0.3375	0.5336
+381	40	1321	BTC	-0.2808	0.3169	0.4109
+382	40	1381	BTC	0.9792	0.3383	0.4951
+383	41	1	BTC	0.9840	0.3585	0.5665
+384	41	61	BTC	0.0091	0.3479	0.4861
+385	41	121	BTC	-0.8652	0.3122	0.2934
+386	41	181	BTC	0.2268	0.3098	0.2840
+387	41	241	BTC	-0.9993	0.2734	0.1041
+388	41	301	BTC	0.9818	0.2736	0.2263
+389	41	361	BTC	-0.0249	0.2916	0.1916
+390	41	421	BTC	-0.8934	0.2395	0.0421
+391	41	481	BTC	-0.9944	0.2061	-0.1000
+392	41	541	BTC	0.9682	0.2053	0.0459
+393	41	601	BTC	-0.5574	0.1852	-0.0362
+394	41	661	BTC	\N	0.1764	-0.0362
+395	41	721	BTC	\N	0.2091	-0.0362
+396	41	781	BTC	\N	0.2150	-0.0362
+397	41	841	BTC	\N	0.2434	-0.0362
+398	41	901	BTC	\N	0.2487	-0.0362
+399	41	961	BTC	\N	0.2561	-0.0362
+400	41	1021	BTC	\N	0.2460	-0.0362
+401	41	1081	BTC	\N	0.2209	-0.0362
+402	41	1141	BTC	\N	0.1941	-0.0362
+403	41	1201	BTC	\N	0.2293	-0.0362
+404	41	1261	BTC	\N	0.2008	-0.0362
+405	41	1321	BTC	\N	0.2008	-0.0362
+406	41	1381	BTC	\N	0.2008	-0.0362
+407	42	1	BTC	0.0082	0.2011	-0.0139
+408	42	61	BTC	0.9682	0.2285	0.3465
+409	42	121	BTC	\N	0.2285	0.3465
+410	42	181	BTC	0.5106	0.2383	0.4003
+411	42	241	BTC	0.5859	0.2498	0.4513
+412	42	301	BTC	0.4331	0.2558	0.4469
+413	42	361	BTC	\N	0.2709	0.4469
+414	42	421	BTC	\N	0.2709	0.4469
+415	42	481	BTC	0.4098	0.2754	0.4369
+416	42	541	BTC	\N	0.2593	0.4369
+417	42	601	BTC	\N	0.2593	0.4369
+418	42	661	BTC	-0.5859	0.2294	0.1371
+419	42	721	BTC	0.9766	0.2297	0.3493
+420	42	781	BTC	0.9985	0.2816	0.4959
+421	42	841	BTC	0.9360	0.2798	0.5868
+422	42	901	BTC	-0.9963	0.2799	0.2820
+423	42	961	BTC	-0.5574	0.2287	0.1294
+424	42	1021	BTC	-0.0160	0.1956	0.1042
+425	42	1081	BTC	-0.0244	0.1625	0.0828
+426	42	1141	BTC	0.6369	0.1698	0.1722
+427	42	1201	BTC	-0.9970	0.1214	-0.0113
+428	42	1261	BTC	-0.0292	0.0930	-0.0141
+429	42	1321	BTC	-0.0152	0.1019	-0.0142
+430	42	1381	BTC	0.0660	0.0715	-0.0024
+431	43	1	BTC	0.9719	0.0711	0.1396
+432	43	61	BTC	0.3177	0.0813	0.1652
+433	43	121	BTC	0.9705	0.1425	0.2799
+434	43	181	BTC	\N	0.1396	0.2799
+435	43	241	BTC	0.3082	0.1847	0.2844
+436	43	301	BTC	0.9818	0.1847	0.3927
+437	43	361	BTC	-0.7003	0.1614	0.2266
+438	43	421	BTC	\N	0.1991	0.2266
+439	43	481	BTC	\N	0.2433	0.2266
+440	43	541	BTC	0.9985	0.2444	0.3727
+441	43	601	BTC	\N	0.2753	0.3727
+442	43	661	BTC	\N	0.2753	0.3727
+443	43	721	BTC	0.9970	0.3020	0.5133
+444	43	781	BTC	-0.0007	0.2912	0.4073
+445	43	841	BTC	0.4062	0.2951	0.4071
+446	43	901	BTC	\N	0.2951	0.4071
+447	43	961	BTC	\N	0.2951	0.4071
+448	43	1021	BTC	-0.9992	0.2520	0.0864
+449	43	1081	BTC	\N	0.2520	0.0864
+450	43	1141	BTC	0.9818	0.2755	0.2949
+451	43	1201	BTC	0.9837	0.2977	0.4408
+452	43	1261	BTC	0.9781	0.3183	0.5463
+453	43	1321	BTC	0.9702	0.3375	0.6246
+454	43	1381	BTC	0.9920	0.3562	0.6892
+455	44	1	BTC	\N	0.3664	0.6892
+456	44	61	BTC	\N	0.3482	0.6892
+457	44	121	BTC	\N	0.3482	0.6892
+458	44	181	BTC	\N	0.3431	0.6892
+459	44	241	BTC	\N	0.3353	0.6892
+460	44	301	BTC	\N	0.3320	0.6892
+461	44	361	BTC	\N	0.3320	0.6892
+462	44	421	BTC	\N	0.3320	0.6892
+463	44	481	BTC	\N	0.3293	0.6892
+464	44	541	BTC	\N	0.3293	0.6892
+465	44	601	BTC	0.3499	0.3300	0.5335
+466	44	661	BTC	\N	0.3616	0.5335
+467	44	721	BTC	\N	0.3396	0.5335
+468	44	781	BTC	\N	0.3152	0.5335
+469	44	841	BTC	\N	0.2913	0.5335
+470	44	901	BTC	\N	0.3428	0.5335
+471	44	961	BTC	\N	0.3803	0.5335
+472	44	1021	BTC	\N	0.3976	0.5335
+473	44	1081	BTC	\N	0.4168	0.5335
+474	44	1141	BTC	\N	0.4063	0.5335
+475	44	1201	BTC	\N	0.4764	0.5335
+476	44	1261	BTC	\N	0.5031	0.5335
+477	44	1321	BTC	\N	0.5318	0.5335
+478	44	1381	BTC	\N	0.5593	0.5335
+479	45	1	BTC	\N	0.5335	0.5335
+480	45	61	BTC	\N	0.5478	0.5335
+481	45	121	BTC	\N	0.5177	0.5335
+482	45	181	BTC	\N	0.5177	0.5335
+483	45	241	BTC	\N	0.5338	0.5335
+484	45	301	BTC	\N	0.4964	0.5335
+485	45	361	BTC	\N	0.6052	0.5335
+486	45	421	BTC	\N	0.6052	0.5335
+487	45	481	BTC	\N	0.6052	0.5335
+488	45	541	BTC	\N	0.5659	0.5335
+489	45	601	BTC	\N	0.5659	0.5335
+490	45	661	BTC	\N	0.5659	0.5335
+491	45	721	BTC	\N	0.5180	0.5335
+492	45	781	BTC	0.9682	0.6257	0.9492
+493	45	841	BTC	-0.7650	0.4955	0.0500
+494	45	901	BTC	0.7003	0.5160	0.2952
+495	45	961	BTC	-0.9970	0.3785	-0.0966
+496	45	1021	BTC	\N	0.5162	-0.0966
+497	45	1081	BTC	0.9729	0.5577	0.2110
+498	45	1141	BTC	-0.9972	0.3778	-0.0900
+499	45	1201	BTC	\N	0.3172	-0.0900
+500	45	1261	BTC	-0.0862	0.2108	-0.0891
+501	45	1321	BTC	\N	0.1264	-0.0891
+502	45	1381	BTC	\N	0.0182	-0.0891
+503	46	1	BTC	0.6166	0.0847	0.1062
+504	46	61	BTC	\N	0.0847	0.1062
+505	46	121	BTC	0.9325	0.1695	0.3287
+506	46	181	BTC	\N	0.1695	0.3287
+507	46	241	BTC	\N	0.1695	0.3287
+508	46	301	BTC	-0.5994	0.0996	0.0571
+509	46	361	BTC	\N	0.0996	0.0571
+510	46	421	BTC	\N	0.0996	0.0571
+511	46	481	BTC	\N	0.0996	0.0571
+512	46	541	BTC	\N	0.0996	0.0571
+513	46	601	BTC	\N	0.0746	0.0571
+514	46	661	BTC	\N	0.0746	0.0571
+515	46	721	BTC	\N	0.0746	0.0571
+516	46	781	BTC	\N	0.0746	0.0571
+517	46	841	BTC	\N	0.0746	0.0571
+518	46	901	BTC	\N	0.0746	0.0571
+519	46	961	BTC	\N	0.0746	0.0571
+520	46	1021	BTC	\N	0.0746	0.0571
+521	46	1081	BTC	\N	0.0746	0.0571
+522	46	1141	BTC	\N	0.0746	0.0571
+523	46	1201	BTC	\N	0.0746	0.0571
+524	46	1261	BTC	\N	0.0746	0.0571
+525	46	1321	BTC	\N	0.0746	0.0571
+526	46	1381	BTC	\N	0.0746	0.0571
+527	47	1	BTC	\N	0.0746	0.0571
+528	47	61	BTC	\N	0.0746	0.0571
+529	47	121	BTC	0.9325	0.1526	0.8058
+530	47	181	BTC	\N	0.1526	0.8058
+531	47	241	BTC	-0.0643	0.1345	0.3425
+532	47	301	BTC	\N	0.1345	0.3425
+533	47	361	BTC	\N	0.1345	0.3425
+534	47	421	BTC	\N	0.1345	0.3425
+535	47	481	BTC	\N	0.1345	0.3425
+536	47	541	BTC	\N	0.1345	0.3425
+537	47	601	BTC	\N	0.1345	0.3425
+538	47	661	BTC	\N	0.1345	0.3425
+539	47	721	BTC	\N	0.1345	0.3425
+540	47	781	BTC	0.9970	0.1369	0.7736
+541	47	841	BTC	0.9957	0.2836	0.8695
+542	47	901	BTC	0.9882	0.3076	0.9090
+543	47	961	BTC	\N	0.4262	0.9090
+544	47	1021	BTC	0.9840	0.4727	0.9320
+545	47	1081	BTC	-0.5267	0.3477	0.5506
+546	47	1141	BTC	0.3876	0.4631	0.5128
+547	47	1201	BTC	0.4879	0.4650	0.5075
+548	47	1261	BTC	0.9100	0.5417	0.5863
+549	47	1321	BTC	\N	0.5417	0.5863
+550	47	1381	BTC	0.8934	0.5668	0.6498
+551	48	1	BTC	\N	0.5630	0.6498
+552	48	61	BTC	\N	0.5630	0.6498
+553	48	121	BTC	\N	0.5322	0.6498
+554	48	181	BTC	\N	0.5322	0.6498
+555	48	241	BTC	\N	0.5322	0.6498
+556	48	301	BTC	\N	0.6350	0.6498
+557	48	361	BTC	-0.7269	0.5215	0.1539
+558	48	421	BTC	0.9792	0.5567	0.3962
+559	48	481	BTC	0.4397	0.5484	0.4072
+560	48	541	BTC	\N	0.5484	0.4072
+561	48	601	BTC	\N	0.5484	0.4072
+562	48	661	BTC	\N	0.5484	0.4072
+563	48	721	BTC	-0.9996	0.4452	-0.0284
+564	48	781	BTC	\N	0.4452	-0.0284
+565	48	841	BTC	\N	0.4452	-0.0284
+566	48	901	BTC	\N	0.4452	-0.0284
+567	48	961	BTC	\N	0.4452	-0.0284
+568	48	1021	BTC	-0.4512	0.3892	-0.1923
+569	48	1081	BTC	\N	0.3892	-0.1923
+570	48	1141	BTC	0.9819	0.4240	0.2075
+571	48	1201	BTC	0.9712	0.4544	0.4229
+572	48	1261	BTC	\N	0.4544	0.4229
+573	48	1321	BTC	0.0017	0.4306	0.3079
+574	48	1381	BTC	0.4749	0.4328	0.3479
+575	49	1	BTC	0.4561	0.4339	0.3713
+576	49	61	BTC	\N	0.4339	0.3713
+577	49	121	BTC	\N	0.4090	0.3713
+578	49	181	BTC	0.7430	0.4249	0.4641
+579	49	241	BTC	\N	0.4494	0.4641
+580	49	301	BTC	-0.0008	0.4279	0.3481
+581	49	361	BTC	\N	0.4279	0.3481
+582	49	421	BTC	\N	0.4279	0.3481
+583	49	481	BTC	\N	0.4279	0.3481
+584	49	541	BTC	0.4000	0.4266	0.3640
+585	49	601	BTC	\N	0.4266	0.3640
+586	49	661	BTC	-0.9993	0.3647	-0.0311
+587	49	721	BTC	0.9818	0.3904	0.2227
+588	49	781	BTC	0.3272	0.3625	0.2462
+589	49	841	BTC	0.6249	0.3470	0.3240
+590	49	901	BTC	-0.9993	0.2642	0.0703
+591	49	961	BTC	\N	0.2642	0.0703
+592	49	1021	BTC	-0.0481	0.2212	0.0462
+593	49	1081	BTC	0.9682	0.2835	0.2214
+594	49	1141	BTC	\N	0.2790	0.2214
+595	49	1201	BTC	0.0271	0.2589	0.1822
+596	49	1261	BTC	0.8934	0.2582	0.3166
+597	49	1321	BTC	-0.9992	0.2058	0.0811
+598	49	1381	BTC	\N	0.1759	0.0811
+599	50	1	BTC	0.0015	0.1686	0.0657
+600	50	61	BTC	\N	0.1686	0.0657
+601	50	121	BTC	\N	0.1686	0.0657
+602	50	181	BTC	0.9985	0.2018	0.2786
+603	50	241	BTC	\N	0.2018	0.2786
+604	50	301	BTC	\N	0.2018	0.2786
+605	50	361	BTC	0.5859	0.2543	0.3584
+606	50	421	BTC	\N	0.2241	0.3584
+607	50	481	BTC	\N	0.2148	0.3584
+608	50	541	BTC	\N	0.2148	0.3584
+609	50	601	BTC	\N	0.2148	0.3584
+610	50	661	BTC	\N	0.2148	0.3584
+611	50	721	BTC	\N	0.2700	0.3584
+612	50	781	BTC	\N	0.2700	0.3584
+613	50	841	BTC	\N	0.2700	0.3584
+614	50	901	BTC	\N	0.2700	0.3584
+615	50	961	BTC	\N	0.2700	0.3584
+616	50	1021	BTC	\N	0.3043	0.3584
+617	50	1081	BTC	\N	0.3043	0.3584
+618	50	1141	BTC	\N	0.2704	0.3584
+619	50	1201	BTC	\N	0.2336	0.3584
+620	50	1261	BTC	\N	0.2336	0.3584
+621	50	1321	BTC	\N	0.2464	0.3584
+622	50	1381	BTC	\N	0.2330	0.3584
+623	51	1	BTC	\N	0.2190	0.3584
+624	51	61	BTC	\N	0.2190	0.3584
+625	51	121	BTC	\N	0.2190	0.3584
+626	51	181	BTC	\N	0.1841	0.3584
+627	51	241	BTC	\N	0.1841	0.3584
+628	51	301	BTC	\N	0.1973	0.3584
+629	51	361	BTC	\N	0.1973	0.3584
+630	51	421	BTC	\N	0.1973	0.3584
+631	51	481	BTC	\N	0.1973	0.3584
+632	51	541	BTC	\N	0.1817	0.3584
+633	51	601	BTC	\N	0.1817	0.3584
+634	51	661	BTC	\N	0.2802	0.3584
+635	51	721	BTC	\N	0.2164	0.3584
+636	51	781	BTC	\N	0.2053	0.3584
+637	51	841	BTC	\N	0.1587	0.3584
+638	51	901	BTC	\N	0.3034	0.3584
+639	51	961	BTC	\N	0.3034	0.3584
+640	51	1021	BTC	\N	0.3536	0.3584
+641	51	1081	BTC	\N	0.2512	0.3584
+642	51	1141	BTC	\N	0.2512	0.3584
+643	51	1201	BTC	\N	0.2960	0.3584
+644	51	1261	BTC	\N	0.1467	0.3584
+645	51	1321	BTC	\N	0.5286	0.3584
+646	51	1381	BTC	\N	0.5286	0.3584
+647	52	1	BTC	\N	0.7922	0.3584
+648	52	61	BTC	\N	0.7922	0.3584
+649	52	121	BTC	\N	0.7922	0.3584
+650	52	181	BTC	\N	0.5859	0.3584
+651	52	241	BTC	\N	0.5859	0.3584
+652	52	301	BTC	\N	0.5859	0.3584
+653	52	361	BTC	\N	\N	0.3584
+654	52	421	BTC	\N	\N	0.3584
+655	52	481	BTC	\N	\N	0.3584
+656	52	541	BTC	\N	\N	0.3584
+657	52	601	BTC	\N	\N	0.3584
+658	52	661	BTC	\N	\N	0.3584
+659	52	721	BTC	0.0086	0.0086	0.0092
+660	52	781	BTC	0.3504	0.1795	0.1918
+661	52	841	BTC	\N	0.1795	0.1918
+662	52	901	BTC	0.6434	0.3341	0.3797
+663	52	961	BTC	-0.9993	0.0008	-0.0676
+664	52	1021	BTC	\N	0.0008	-0.0676
+665	52	1081	BTC	0.9826	0.1971	0.2492
+666	52	1141	BTC	0.3924	0.2297	0.2861
+667	52	1201	BTC	0.0164	0.1992	0.2242
+668	52	1261	BTC	\N	0.1992	0.2242
+669	52	1321	BTC	\N	0.1992	0.2242
+670	52	1381	BTC	\N	0.1992	0.2242
+671	53	1	BTC	0.9873	0.2977	0.4449
+672	53	61	BTC	\N	0.2977	0.4449
+673	53	121	BTC	-0.9968	0.1539	0.0441
+674	53	181	BTC	0.0015	0.1386	0.0338
+675	53	241	BTC	\N	0.1386	0.0338
+676	53	301	BTC	-0.8126	0.0522	-0.1730
+677	53	361	BTC	0.9729	0.1289	0.0790
+678	53	421	BTC	0.9983	0.1958	0.2651
+679	53	481	BTC	-0.0008	0.1817	0.2147
+680	53	541	BTC	0.9990	0.2362	0.3553
+681	53	601	BTC	-0.2064	0.2086	0.2590
+682	53	661	BTC	-0.3504	0.1757	0.1584
+683	53	721	BTC	0.9682	0.2197	0.2880
+684	53	781	BTC	0.5267	0.2359	0.3252
+685	53	841	BTC	0.5267	0.2504	0.3559
+686	53	901	BTC	0.5046	0.2625	0.3782
+687	53	961	BTC	0.5423	0.2752	0.4023
+688	53	1021	BTC	0.0534	0.2656	0.3517
+689	53	1081	BTC	0.9987	0.2961	0.4445
+690	53	1141	BTC	\N	0.2961	0.4445
+691	53	1201	BTC	-0.1910	0.2766	0.3426
+692	53	1261	BTC	0.0448	0.2677	0.2961
+693	53	1321	BTC	0.3280	0.2700	0.3010
+694	53	1381	BTC	-0.6124	0.2384	0.1642
+695	54	1	BTC	\N	0.2384	0.1642
+696	54	61	BTC	\N	0.2384	0.1642
+697	54	121	BTC	-0.0027	0.2301	0.1329
+698	54	181	BTC	0.5267	0.2400	0.2028
+699	54	241	BTC	0.9843	0.2640	0.3357
+700	54	301	BTC	0.9985	0.2870	0.4444
+701	54	361	BTC	0.9995	0.3086	0.5327
+702	54	421	BTC	0.0000	0.2995	0.4501
+703	54	481	BTC	0.9834	0.3190	0.5310
+704	54	541	BTC	0.9702	0.3371	0.5965
+705	54	601	BTC	\N	0.3371	0.5965
+706	54	661	BTC	\N	0.3371	0.5965
+707	54	721	BTC	\N	0.3465	0.5965
+708	54	781	BTC	\N	0.3464	0.5965
+709	54	841	BTC	\N	0.3464	0.5965
+710	54	901	BTC	\N	0.3374	0.5965
+711	54	961	BTC	\N	0.3792	0.5965
+712	54	1021	BTC	\N	0.3792	0.5965
+713	54	1081	BTC	\N	0.3597	0.5965
+714	54	1141	BTC	\N	0.3586	0.5965
+715	54	1201	BTC	\N	0.3704	0.5965
+716	54	1261	BTC	\N	0.3704	0.5965
+717	54	1321	BTC	\N	0.3704	0.5965
+718	54	1381	BTC	\N	0.3704	0.5965
+719	55	1	BTC	\N	0.3484	0.5965
+720	55	61	BTC	0.9970	0.3707	0.8349
+721	55	121	BTC	-0.7269	0.3801	0.1989
+722	55	181	BTC	\N	0.3936	0.1989
+723	55	241	BTC	\N	0.3936	0.1989
+724	55	301	BTC	\N	0.4382	0.1989
+725	55	361	BTC	0.9325	0.4367	0.5065
+726	55	421	BTC	\N	0.4151	0.5065
+727	55	481	BTC	\N	0.4318	0.5065
+728	55	541	BTC	\N	0.4082	0.5065
+729	55	601	BTC	\N	0.4349	0.5065
+730	55	661	BTC	0.9970	0.4935	0.7329
+731	55	721	BTC	0.2312	0.4614	0.5585
+732	55	781	BTC	0.6124	0.4651	0.5740
+733	55	841	BTC	0.4415	0.4614	0.5411
+734	55	901	BTC	0.9982	0.4829	0.6429
+735	55	961	BTC	0.3034	0.4725	0.5735
+736	55	1021	BTC	0.4199	0.4884	0.5442
+737	55	1081	BTC	\N	0.4652	0.5442
+738	55	1141	BTC	\N	0.4652	0.5442
+739	55	1201	BTC	0.9986	0.5193	0.6472
+740	55	1261	BTC	0.9682	0.5613	0.7137
+741	55	1321	BTC	\N	0.5724	0.7137
+742	55	1381	BTC	\N	0.6316	0.7137
+743	56	1	BTC	\N	0.6316	0.7137
+744	56	61	BTC	\N	0.6316	0.7137
+745	56	121	BTC	\N	0.6650	0.7137
+746	56	181	BTC	\N	0.6727	0.7137
+747	56	241	BTC	\N	0.6544	0.7137
+748	56	301	BTC	\N	0.6329	0.7137
+749	56	361	BTC	-0.9682	0.5099	-0.0080
+750	56	421	BTC	0.9758	0.5709	0.3178
+751	56	481	BTC	\N	0.5434	0.3178
+752	56	541	BTC	\N	0.5129	0.3178
+753	56	601	BTC	0.4723	0.5102	0.3699
+754	56	661	BTC	-0.1282	0.4703	0.2304
+755	56	721	BTC	0.3823	0.4651	0.2675
+756	56	781	BTC	0.8934	0.4889	0.4051
+757	56	841	BTC	0.9682	0.5141	0.5190
+758	56	901	BTC	\N	0.5141	0.5190
+759	56	961	BTC	0.9823	0.5375	0.6174
+760	56	1021	BTC	-0.0150	0.5112	0.4930
+761	56	1081	BTC	0.0015	0.4881	0.4021
+762	56	1141	BTC	\N	0.4881	0.4021
+763	56	1201	BTC	0.3511	0.4821	0.3920
+764	56	1261	BTC	-0.9970	0.4205	0.1341
+765	56	1321	BTC	0.9549	0.4419	0.2789
+766	56	1381	BTC	-0.9988	0.3864	0.0628
+767	57	1	BTC	0.0076	0.3724	0.0538
+768	57	61	BTC	\N	0.3484	0.0538
+769	57	121	BTC	0.9986	0.4148	0.2225
+770	57	181	BTC	\N	0.4148	0.2225
+771	57	241	BTC	0.9001	0.4327	0.3527
+772	57	301	BTC	0.9325	0.4506	0.4579
+773	57	361	BTC	0.0136	0.4178	0.3810
+774	57	421	BTC	\N	0.4178	0.3810
+775	57	481	BTC	\N	0.4178	0.3810
+776	57	541	BTC	\N	0.4178	0.3810
+777	57	601	BTC	\N	0.4178	0.3810
+778	57	661	BTC	\N	0.3963	0.3810
+779	57	721	BTC	\N	0.4027	0.3810
+780	57	781	BTC	\N	0.3943	0.3810
+781	57	841	BTC	\N	0.3923	0.3810
+782	57	901	BTC	\N	0.3660	0.3810
+783	57	961	BTC	\N	0.3688	0.3810
+784	57	1021	BTC	\N	0.3664	0.3810
+785	57	1081	BTC	\N	0.3664	0.3810
+786	57	1141	BTC	\N	0.3664	0.3810
+787	57	1201	BTC	\N	0.3348	0.3810
+788	57	1261	BTC	\N	0.3014	0.3810
+789	57	1321	BTC	\N	0.3014	0.3810
+790	57	1381	BTC	\N	0.3014	0.3810
+791	58	1	BTC	\N	0.3014	0.3810
+792	58	61	BTC	\N	0.3014	0.3810
+793	58	121	BTC	\N	0.3014	0.3810
+794	58	181	BTC	\N	0.3014	0.3810
+795	58	241	BTC	\N	0.3014	0.3810
+796	58	301	BTC	\N	0.3014	0.3810
+797	58	361	BTC	\N	0.3720	0.3810
+798	58	421	BTC	\N	0.3364	0.3810
+799	58	481	BTC	\N	0.3364	0.3810
+800	58	541	BTC	\N	0.3364	0.3810
+801	58	601	BTC	\N	0.3279	0.3810
+802	58	661	BTC	\N	0.3584	0.3810
+803	58	721	BTC	\N	0.3566	0.3810
+804	58	781	BTC	\N	0.3154	0.3810
+805	58	841	BTC	\N	0.2610	0.3810
+806	58	901	BTC	\N	0.2610	0.3810
+807	58	961	BTC	\N	0.1954	0.3810
+808	58	1021	BTC	\N	0.2164	0.3810
+809	58	1081	BTC	\N	0.2403	0.3810
+810	58	1141	BTC	\N	0.2403	0.3810
+811	58	1201	BTC	\N	0.2264	0.3810
+812	58	1261	BTC	\N	0.4012	0.3810
+813	58	1321	BTC	\N	0.3089	0.3810
+814	58	1381	BTC	\N	0.5705	0.3810
+815	59	1	BTC	\N	0.7112	0.3810
+816	59	61	BTC	\N	0.7112	0.3810
+817	59	121	BTC	-0.9987	0.2119	-0.9842
+818	59	181	BTC	\N	0.2119	-0.9842
+819	59	241	BTC	\N	-0.0175	-0.9842
+820	59	301	BTC	\N	-0.4925	-0.9842
+821	59	361	BTC	\N	-0.9987	-0.9842
+822	59	421	BTC	\N	-0.9987	-0.9842
+823	59	481	BTC	\N	-0.9987	-0.9842
+824	59	541	BTC	\N	-0.9987	-0.9842
+825	59	601	BTC	\N	-0.9987	-0.9842
+826	59	661	BTC	\N	-0.9987	-0.9842
+827	59	721	BTC	\N	-0.9987	-0.9842
+828	59	781	BTC	0.9670	-0.0158	0.6292
+829	59	841	BTC	0.9670	0.3118	0.7941
+830	59	901	BTC	\N	0.3118	0.7941
+831	59	961	BTC	\N	0.3118	0.7941
+832	59	1021	BTC	\N	0.3118	0.7941
+833	59	1081	BTC	0.9670	0.4756	0.8743
+834	59	1141	BTC	\N	0.4756	0.8743
+835	59	1201	BTC	\N	0.4756	0.8743
+836	59	1261	BTC	\N	0.4756	0.8743
+837	59	1321	BTC	\N	0.4756	0.8743
+838	59	1381	BTC	\N	0.4756	0.8743
+839	60	1	BTC	\N	0.4756	0.8743
+840	60	61	BTC	\N	0.4756	0.8743
+841	60	121	BTC	\N	0.4756	0.8743
+842	60	181	BTC	\N	0.4756	0.8743
+843	60	241	BTC	\N	0.4756	0.8743
+844	60	301	BTC	\N	0.4756	0.8743
+845	60	361	BTC	\N	0.4756	0.8743
+846	60	421	BTC	\N	0.4756	0.8743
+847	60	481	BTC	\N	0.4756	0.8743
+848	60	541	BTC	\N	0.4756	0.8743
+849	60	601	BTC	-0.2757	0.3253	-0.0696
+850	60	661	BTC	-0.9993	0.1046	-0.5218
+851	60	721	BTC	\N	0.1046	-0.5218
+852	60	781	BTC	\N	0.1046	-0.5218
+853	60	841	BTC	\N	0.1046	-0.5218
+854	60	901	BTC	\N	0.1046	-0.5218
+855	60	961	BTC	\N	0.1046	-0.5218
+856	60	1021	BTC	\N	0.1046	-0.5218
+857	60	1081	BTC	\N	0.1046	-0.5218
+858	60	1141	BTC	\N	0.1046	-0.5218
+859	60	1201	BTC	\N	0.1046	-0.5218
+860	60	1261	BTC	\N	0.1046	-0.5218
+861	60	1321	BTC	\N	0.1046	-0.5218
+862	60	1381	BTC	\N	0.1046	-0.5218
+863	61	1	BTC	\N	0.1046	-0.5218
+864	61	61	BTC	\N	0.1046	-0.5218
+865	61	121	BTC	\N	0.3252	-0.5218
+866	61	181	BTC	\N	0.3252	-0.5218
+867	61	241	BTC	\N	0.3252	-0.5218
+868	61	301	BTC	\N	0.3252	-0.5218
+869	61	361	BTC	\N	0.3252	-0.5218
+870	61	421	BTC	\N	0.3252	-0.5218
+871	61	481	BTC	\N	0.3252	-0.5218
+872	61	541	BTC	\N	0.3252	-0.5218
+873	61	601	BTC	\N	0.3252	-0.5218
+874	61	661	BTC	\N	0.3252	-0.5218
+875	61	721	BTC	\N	0.3252	-0.5218
+876	61	781	BTC	\N	0.1648	-0.5218
+877	61	841	BTC	\N	-0.1027	-0.5218
+878	61	901	BTC	\N	-0.1027	-0.5218
+879	61	961	BTC	\N	-0.1027	-0.5218
+880	61	1021	BTC	\N	-0.1027	-0.5218
+881	61	1081	BTC	\N	-0.6375	-0.5218
+882	61	1141	BTC	\N	-0.6375	-0.5218
+883	61	1201	BTC	\N	-0.6375	-0.5218
+884	61	1261	BTC	\N	-0.6375	-0.5218
+885	61	1321	BTC	\N	-0.6375	-0.5218
+886	61	1381	BTC	\N	-0.6375	-0.5218
+887	62	1	BTC	\N	-0.6375	-0.5218
+888	62	61	BTC	\N	-0.6375	-0.5218
+889	62	121	BTC	0.9758	-0.0997	0.9643
+890	62	181	BTC	\N	-0.0997	0.9643
+891	62	241	BTC	\N	-0.0997	0.9643
+892	62	301	BTC	0.9814	0.1706	0.9746
+893	62	361	BTC	0.9042	0.3173	0.9457
+894	62	421	BTC	\N	0.3173	0.9457
+895	62	481	BTC	0.8481	0.4058	0.9112
+896	62	541	BTC	0.9970	0.4902	0.9361
+897	62	601	BTC	0.9970	0.6720	0.9513
+898	62	661	BTC	-0.9972	0.6723	0.5144
+899	62	721	BTC	0.8360	0.6928	0.5805
+900	62	781	BTC	\N	0.6928	0.5805
+901	62	841	BTC	\N	0.6928	0.5805
+902	62	901	BTC	\N	0.6928	0.5805
+903	62	961	BTC	\N	0.6928	0.5805
+904	62	1021	BTC	0.9985	0.7268	0.7042
+905	62	1081	BTC	0.7003	0.7241	0.7032
 \.
 
 
@@ -7819,8 +8312,8 @@ COPY public.ma_sentiment_dim (id, dateid, timeid, trading_symbol, comp_sentiment
 --
 
 COPY public.polls_choice (id, choice_text, votes, question_id) FROM stdin;
-2	Bearish	0	1
-1	Bullish	1	1
+1	Bullish	6	1
+2	Bearish	7	1
 \.
 
 
@@ -7829,7 +8322,10 @@ COPY public.polls_choice (id, choice_text, votes, question_id) FROM stdin;
 --
 
 COPY public.polls_profile (id, created, modified, user_id) FROM stdin;
-1	2021-02-16 12:33:21.273029+00	2021-03-01 12:48:25.814177+00	1
+2	2021-03-01 22:09:43.896262+00	2021-03-01 22:10:09.131032+00	2
+3	2021-03-02 14:07:18.298821+00	2021-03-02 14:07:34.741632+00	3
+4	2021-03-02 14:07:40.896822+00	2021-03-02 14:08:50.808883+00	4
+1	2021-02-16 12:33:21.273029+00	2021-03-03 18:19:08.24749+00	1
 \.
 
 
@@ -15866,6 +16362,236 @@ COPY public.sentiment_fact (id, dateid, timeid, trading_symbol, comp_sentiment) 
 383	57	241	BTC	0.9001
 384	57	301	BTC	0.9325
 385	57	361	BTC	0.0136
+386	59	781	BTC	0.9670
+387	59	841	BTC	0.9670
+388	59	1081	BTC	0.9670
+389	59	121	BTC	-0.9987
+390	60	601	BTC	-0.2757
+391	60	661	BTC	-0.9993
+392	59	781	BTC	0.9670
+393	59	841	BTC	0.9670
+394	59	1081	BTC	0.9670
+395	59	121	BTC	-0.9987
+396	60	601	BTC	-0.2757
+397	60	661	BTC	-0.9993
+398	3	601	BTC	-0.2757
+399	3	661	BTC	-0.9993
+400	3	961	BTC	0.8225
+401	3	601	BTC	-0.2757
+402	3	661	BTC	-0.9993
+403	3	961	BTC	0.8225
+404	3	601	BTC	-0.2757
+405	3	661	BTC	-0.9993
+406	3	961	BTC	0.8225
+407	3	601	BTC	-0.2757
+408	3	661	BTC	-0.9993
+409	3	961	BTC	0.8225
+410	3	601	BTC	-0.2757
+411	3	661	BTC	-0.9993
+412	3	961	BTC	0.8225
+413	3	601	BTC	-0.2757
+414	3	661	BTC	-0.9993
+415	3	961	BTC	0.8225
+416	3	601	BTC	-0.2757
+417	3	661	BTC	-0.9993
+418	3	961	BTC	0.8225
+419	34	61	BTC	-0.9984
+420	3	601	BTC	-0.2757
+421	3	661	BTC	-0.9993
+422	3	961	BTC	0.8225
+423	3	601	BTC	-0.2757
+424	3	661	BTC	-0.9993
+425	3	961	BTC	0.8225
+426	3	601	BTC	-0.2757
+427	3	661	BTC	-0.9993
+428	3	601	BTC	-0.2757
+429	3	661	BTC	-0.9993
+430	3	601	BTC	-0.2757
+431	3	661	BTC	-0.9993
+432	34	781	BTC	0.6997
+433	3	601	BTC	-0.2757
+434	3	661	BTC	-0.9993
+435	3	601	BTC	-0.2757
+436	3	661	BTC	-0.9993
+437	3	601	BTC	-0.2757
+438	3	661	BTC	-0.9993
+439	3	601	BTC	-0.2757
+440	3	661	BTC	-0.9993
+441	3	601	BTC	-0.2757
+442	3	661	BTC	-0.9993
+443	3	601	BTC	-0.2757
+444	3	661	BTC	-0.9993
+445	3	601	BTC	-0.2757
+446	3	661	BTC	-0.9993
+447	3	1381	BTC	0.9325
+448	34	1201	BTC	0.9829
+449	3	601	BTC	-0.2757
+450	3	661	BTC	-0.9993
+451	34	1201	BTC	0.9829
+452	34	781	BTC	0.9890
+453	34	841	BTC	0.9682
+454	34	1021	BTC	0.5719
+455	34	61	BTC	-0.9638
+456	34	1201	BTC	0.9829
+457	34	1261	BTC	0.9601
+458	34	781	BTC	0.9890
+459	34	841	BTC	0.9682
+460	34	1021	BTC	0.5719
+461	34	61	BTC	-0.9638
+462	34	1201	BTC	0.9829
+463	34	1261	BTC	0.9601
+464	34	781	BTC	0.9890
+465	34	841	BTC	0.9682
+466	34	1021	BTC	0.5719
+467	34	61	BTC	-0.9638
+468	34	1201	BTC	0.9829
+469	34	1261	BTC	0.9601
+470	34	781	BTC	0.9890
+471	34	841	BTC	0.9682
+472	34	1021	BTC	0.5719
+473	34	61	BTC	-0.9638
+474	34	1201	BTC	0.9829
+475	34	1261	BTC	0.9601
+476	34	781	BTC	0.9890
+477	34	841	BTC	0.9682
+478	34	1021	BTC	0.5719
+479	34	1201	BTC	0.9829
+480	34	1261	BTC	0.9601
+481	62	301	BTC	0.9814
+482	62	361	BTC	0.9042
+483	62	481	BTC	0.8481
+484	34	781	BTC	0.9890
+485	34	841	BTC	0.9682
+486	34	1021	BTC	0.5719
+487	34	1201	BTC	0.9829
+488	34	1261	BTC	0.9601
+489	62	301	BTC	0.9814
+490	62	361	BTC	0.9042
+491	62	481	BTC	0.8481
+492	34	781	BTC	0.9890
+493	34	841	BTC	0.9682
+494	34	1021	BTC	0.5719
+495	34	1201	BTC	0.9829
+496	34	1261	BTC	0.9601
+497	62	301	BTC	0.9814
+498	62	361	BTC	0.9042
+499	62	481	BTC	0.8481
+500	34	781	BTC	0.9890
+501	34	841	BTC	0.9682
+502	34	1021	BTC	0.5719
+503	34	1201	BTC	0.9829
+504	34	1261	BTC	0.9601
+505	62	721	BTC	0.8360
+506	62	121	BTC	0.9758
+507	62	301	BTC	0.9814
+508	62	361	BTC	0.9042
+509	62	481	BTC	0.8481
+510	34	781	BTC	0.9890
+511	34	841	BTC	0.9682
+512	34	1021	BTC	0.5719
+513	34	1201	BTC	0.9829
+514	34	1261	BTC	0.9601
+515	62	661	BTC	-0.9972
+516	62	721	BTC	0.8360
+517	62	301	BTC	0.9814
+518	62	361	BTC	0.9042
+519	62	541	BTC	0.9970
+520	34	781	BTC	0.9890
+521	34	841	BTC	0.9682
+522	34	1021	BTC	0.5719
+523	34	1201	BTC	0.9829
+524	34	1261	BTC	0.9601
+525	62	721	BTC	0.8360
+526	62	361	BTC	0.9042
+527	62	481	BTC	0.8481
+528	34	781	BTC	0.9890
+529	34	841	BTC	0.9682
+530	34	1021	BTC	0.5719
+531	34	1201	BTC	0.9829
+532	34	1261	BTC	0.9601
+533	62	721	BTC	0.8360
+534	62	361	BTC	0.9042
+535	62	481	BTC	0.8481
+536	34	781	BTC	0.9890
+537	34	841	BTC	0.9682
+538	34	1021	BTC	0.5719
+539	34	1201	BTC	0.9829
+540	34	1261	BTC	0.9601
+541	62	721	BTC	0.8360
+542	34	781	BTC	0.9890
+543	34	841	BTC	0.9682
+544	34	1021	BTC	0.5719
+545	34	1201	BTC	0.9829
+546	34	1261	BTC	0.9601
+547	62	721	BTC	0.8360
+548	34	781	BTC	0.9890
+549	34	841	BTC	0.9682
+550	34	1021	BTC	0.5719
+551	34	1201	BTC	0.9829
+552	34	1261	BTC	0.9601
+553	62	721	BTC	0.8360
+554	34	781	BTC	0.6997
+555	34	841	BTC	0.9682
+556	34	1201	BTC	0.9829
+557	34	1261	BTC	0.9601
+558	62	601	BTC	0.9970
+559	62	721	BTC	0.8360
+560	34	781	BTC	0.6997
+561	34	841	BTC	0.9682
+562	34	1201	BTC	0.9829
+563	34	1261	BTC	0.9601
+564	62	721	BTC	0.8360
+565	62	1261	BTC	0.9970
+566	62	721	BTC	0.8360
+567	62	1021	BTC	0.9985
+568	62	1261	BTC	0.9970
+569	62	1381	BTC	-0.7351
+570	62	301	BTC	0.9814
+571	62	361	BTC	0.9042
+572	62	481	BTC	0.8481
+573	62	721	BTC	0.8360
+574	62	1021	BTC	0.9985
+575	62	1261	BTC	0.9970
+576	62	1381	BTC	-0.7351
+577	62	301	BTC	0.9814
+578	62	361	BTC	0.9042
+579	62	481	BTC	0.8481
+580	62	721	BTC	0.8360
+581	62	1021	BTC	0.9985
+582	62	1261	BTC	0.9970
+583	62	1381	BTC	-0.7351
+584	62	301	BTC	0.9814
+585	62	361	BTC	0.9042
+586	62	481	BTC	0.8481
+587	62	721	BTC	0.8360
+588	62	1021	BTC	0.9985
+589	62	1261	BTC	0.9970
+590	62	1381	BTC	-0.7351
+591	62	301	BTC	0.9814
+592	62	361	BTC	0.9042
+593	62	481	BTC	0.8481
+594	62	721	BTC	0.8360
+595	62	1021	BTC	0.9985
+596	62	1261	BTC	0.9970
+597	62	1381	BTC	-0.7351
+598	62	301	BTC	0.9814
+599	62	361	BTC	0.9042
+600	62	481	BTC	0.8481
+601	62	721	BTC	0.8360
+602	62	1021	BTC	0.9985
+603	62	1081	BTC	0.7003
+604	62	1261	BTC	0.9970
+605	62	1381	BTC	-0.7351
+606	62	301	BTC	0.9814
+607	62	361	BTC	0.9042
+608	62	481	BTC	0.8481
+609	62	721	BTC	0.8360
+610	62	1021	BTC	0.9985
+611	62	1261	BTC	0.9970
+612	62	1381	BTC	-0.7351
+613	62	301	BTC	0.9814
+614	62	361	BTC	0.9042
+615	62	481	BTC	0.8481
 \.
 
 
@@ -17749,7 +18475,7 @@ SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
 -- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.auth_user_id_seq', 1, true);
+SELECT pg_catalog.setval('public.auth_user_id_seq', 4, true);
 
 
 --
@@ -17784,7 +18510,7 @@ SELECT pg_catalog.setval('public.django_migrations_id_seq', 24, true);
 -- Name: ma_sentiment_dim_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.ma_sentiment_dim_id_seq', 1462, true);
+SELECT pg_catalog.setval('public.ma_sentiment_dim_id_seq', 905, true);
 
 
 --
@@ -17805,7 +18531,7 @@ SELECT pg_catalog.setval('public.polls_choice_id_seq', 2, true);
 -- Name: polls_profile_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
-SELECT pg_catalog.setval('public.polls_profile_id_seq', 1, true);
+SELECT pg_catalog.setval('public.polls_profile_id_seq', 4, true);
 
 
 --
@@ -18240,18 +18966,18 @@ ALTER TABLE ONLY public.sentiment_dim
 
 
 --
--- Name: ma_sentiment_dim fk_dimdate_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.ma_sentiment_dim
-    ADD CONSTRAINT fk_dimdate_sent FOREIGN KEY (dateid) REFERENCES public.date_dim(dateid);
-
-
---
 -- Name: sentiment_fact fk_dimdate_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.sentiment_fact
+    ADD CONSTRAINT fk_dimdate_sent FOREIGN KEY (dateid) REFERENCES public.date_dim(dateid);
+
+
+--
+-- Name: ma_sentiment_dim fk_dimdate_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ma_sentiment_dim
     ADD CONSTRAINT fk_dimdate_sent FOREIGN KEY (dateid) REFERENCES public.date_dim(dateid);
 
 
@@ -18280,18 +19006,18 @@ ALTER TABLE ONLY public.sentiment_dim
 
 
 --
--- Name: ma_sentiment_dim fk_dimtime_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.ma_sentiment_dim
-    ADD CONSTRAINT fk_dimtime_sent FOREIGN KEY (timeid) REFERENCES public.time_dim(timeid);
-
-
---
 -- Name: sentiment_fact fk_dimtime_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.sentiment_fact
+    ADD CONSTRAINT fk_dimtime_sent FOREIGN KEY (timeid) REFERENCES public.time_dim(timeid);
+
+
+--
+-- Name: ma_sentiment_dim fk_dimtime_sent; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.ma_sentiment_dim
     ADD CONSTRAINT fk_dimtime_sent FOREIGN KEY (timeid) REFERENCES public.time_dim(timeid);
 
 
